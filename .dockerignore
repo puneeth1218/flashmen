@@ -1,0 +1,26 @@
+# Version control and local tooling
+.git
+.github
+.vscode
+
+# Python caches and local environments
+**/__pycache__
+**/*.py[cod]
+.venv
+venv
+env
+.pytest_cache
+.mypy_cache
+
+# Frontend dependencies and build output
+frontend/node_modules
+frontend/dist
+frontend/.vite
+
+# Local data and offline caches
+data/geolite2
+offline_packages
+*.db
+*.sqlite
+*.sqlite3
+*.log
