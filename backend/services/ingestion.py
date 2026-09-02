@@ -1,73 +1,106 @@
-"""
-Raw Traffic & Transaction Data Ingestion Service (M2 to M1 Contract).
-"""
-
-import os
+import json
+import logging
+from typing import List, Optional, Dict, Any
 import pandas as pd
-from typing import List
+from pydantic import BaseModel, Field, ValidationError
+import geoip2.database
 
-# Contract Required Columns
-REQUIRED_COLUMNS: List[str] = [
-    "timestamp",
-    "src_ip",
-    "dst_ip",
-    "src_port",
-    "dst_port",
-    "txid",
-    "input_addresses",
-    "output_addresses",
-    "input_amounts",
-    "output_amounts",
-    "src_asn",
-    "src_country",
-    "dst_asn",
-    "dst_country",
-]
+# Setup logger
+logger = logging.getLogger(__name__)
+
+# Global cache to optimize GeoIP lookups
+GEOIP_CACHE: Dict[str, Dict[str, str]] = {}
+
+
+class RawTransactionRow(BaseModel):
+    """Pydantic v2 Schema for validating incoming Bitcoin metadata rows."""
+    timestamp: str
+    src_ip: str
+    dst_ip: str
+    src_port: int
+    dst_port: int
+    txid: str
+    input_addresses: List[str]
+    output_addresses: List[str]
+    input_amounts: List[float]
+    output_amounts: List[float]
+    fee: Optional[float] = 0.0
+    script_type: Optional[str] = "p2pkh"
+
+
+def get_ip_metadata(ip_address: str, reader: Optional[geoip2.database.Reader]) -> Dict[str, str]:
+    """Helper to look up IP country via MaxMind with local caching."""
+    if ip_address in GEOIP_CACHE:
+        return GEOIP_CACHE[ip_address]
+
+    result = {"country": "UNKNOWN"}
+    
+    if reader is not None:
+        try:
+            response = reader.city(ip_address)
+            if response.country and response.country.iso_code:
+                result["country"] = response.country.iso_code
+        except Exception:
+            # Private IPs, loopbacks, or unmapped IPs fall back gracefully
+            pass
+
+    GEOIP_CACHE[ip_address] = result
+    return result
 
 
 def process_raw_file(filepath: str) -> pd.DataFrame:
     """
-    Ingests and parses a raw CSV or JSON file containing Bitcoin network traffic logs.
-
-    Contract 1 (M2 -> M1):
-    Args:
-        filepath (str): Path to the uploaded raw data file (CSV or JSON).
-
-    Returns:
-        pd.DataFrame: Cleaned DataFrame containing exact columns:
-            [timestamp, src_ip, dst_ip, src_port, dst_port, txid,
-             input_addresses, output_addresses, input_amounts, output_amounts,
-             src_asn, src_country, dst_asn, dst_country]
+    Parses CSV/JSON raw transaction data, validates schema using Pydantic,
+    enriches with offline GeoIP metadata, and returns a clean pandas DataFrame.
     """
-    if not os.path.exists(filepath):
-        raise FileNotFoundError(f"Raw data file not found at path: {filepath}")
-
-    ext = os.path.splitext(filepath)[-1].lower()
-    if ext == ".csv":
-        df = pd.read_csv(filepath)
-    elif ext in [".json", ".jsonl"]:
-        df = pd.read_json(filepath, lines=(ext == ".jsonl"))
+    # 1. Load Data
+    if filepath.endswith('.csv'):
+        df_raw = pd.read_csv(filepath)
+        # Parse stringified list columns if loading from CSV
+        for col in ['input_addresses', 'output_addresses', 'input_amounts', 'output_amounts']:
+            if col in df_raw.columns:
+                df_raw[col] = df_raw[col].apply(
+                    lambda x: json.loads(x) if isinstance(x, str) else (x if isinstance(x, list) else [])
+                )
+        records = df_raw.to_dict(orient='records')
+    elif filepath.endswith('.json'):
+        with open(filepath, 'r', encoding='utf-8') as f:
+            records = json.load(f)
+            if not isinstance(records, list):
+                raise ValueError("JSON file must contain a top-level array of objects.")
     else:
-        raise ValueError(f"Unsupported file format: '{ext}'. Must be CSV or JSON.")
+        raise ValueError("Unsupported file format. File must be .csv or .json")
 
-    # Ensure all required contract columns exist, setting missing ones to default stubs
-    for col in REQUIRED_COLUMNS:
-        if col not in df.columns:
-            if "asn" in col:
-                df[col] = "AS0"
-            elif "country" in col:
-                df[col] = "UNKNOWN"
-            elif "port" in col:
-                df[col] = 8333
-            elif "amounts" in col or "addresses" in col:
-                df[col] = ""
-            else:
-                df[col] = None
+    # 2. Validate Rows via Pydantic
+    validated_records = []
+    for idx, record in enumerate(records):
+        try:
+            validated_row = RawTransactionRow(**record)
+            validated_records.append(validated_row.model_dump())
+        except ValidationError as e:
+            logger.warning(f"Row {idx} dropped due to schema validation failure: {e}")
 
-    # Cast timestamp to ISO format string or datetime
-    df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce").astype(str)
-    
-    # Filter to exact contract schema ordering
-    cleaned_df = df[REQUIRED_COLUMNS].copy()
-    
-    return cleaned_df
+    if not validated_records:
+        raise ValueError("No valid records found after Pydantic schema validation.")
+
+    df = pd.DataFrame(validated_records)
+
+    # 3. Standardize Timestamp to UTC
+    df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
+
+    # 4. Perform GeoIP Enrichment
+    geolite_path = "data/geolite2/GeoLite2-City.mmdb"
+    reader = None
+    try:
+        reader = geoip2.database.Reader(geolite_path)
+    except FileNotFoundError:
+        logger.info("GeoLite2-City.mmdb not found. Falling back to default 'UNKNOWN' countries.")
+
+    try:
+        df['src_country'] = df['src_ip'].apply(lambda ip: get_ip_metadata(ip, reader)['country'])
+        df['dst_country'] = df['dst_ip'].apply(lambda ip: get_ip_metadata(ip, reader)['country'])
+    finally:
+        if reader is not None:
+            reader.close()
+
+    return df
