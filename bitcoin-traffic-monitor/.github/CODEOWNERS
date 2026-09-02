@@ -1,0 +1,19 @@
+# Global Owners
+* @team-lead
+
+# Infrastructure & CI
+/docker-compose.yml @devops-lead
+/.github/ @devops-lead
+
+# Backend Module Owners
+/backend/ @backend-lead @backend-dev
+/backend/services/ingestion.py @backend-dev @ml-dev
+
+# Machine Learning Owners
+/ml/ @ml-lead @ml-dev
+
+# Graph Analytics Owners
+/graph/ @graph-lead @frontend-dev
+
+# Frontend Owners
+/frontend/ @frontend-lead @frontend-dev

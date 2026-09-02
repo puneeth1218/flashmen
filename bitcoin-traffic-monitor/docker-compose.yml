@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: btm_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-btm_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-btm_password}
+      POSTGRES_DB: ${POSTGRES_DB:-bitcoin_traffic_monitor}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U btm_user -d bitcoin_traffic_monitor"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: btm_backend
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-btm_user}:${POSTGRES_PASSWORD:-btm_password}@postgres:5432/${POSTGRES_DB:-bitcoin_traffic_monitor}
+      - GEOLITE2_DB_PATH=/app/data/geolite2/GeoLite2-City.mmdb
+      - ENVIRONMENT=production
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: btm_frontend
+    restart: always
+    ports:
+      - "3000:80"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
