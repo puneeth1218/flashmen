@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from typing import List, Optional, Dict, Any
 import pandas as pd
 from pydantic import BaseModel, Field, ValidationError
@@ -62,7 +63,14 @@ def process_raw_file(filepath: str) -> pd.DataFrame:
                 df_raw[col] = df_raw[col].apply(
                     lambda x: json.loads(x) if isinstance(x, str) else (x if isinstance(x, list) else [])
                 )
+        df_raw = df_raw.where(pd.notnull(df_raw), None)
         records = df_raw.to_dict(orient='records')
+        # Ensure optional defaults are applied when None
+        for r in records:
+            if r.get('fee') is None:
+                r['fee'] = 0.0
+            if r.get('script_type') is None:
+                r['script_type'] = "p2pkh"
     elif filepath.endswith('.json'):
         with open(filepath, 'r', encoding='utf-8') as f:
             records = json.load(f)
@@ -89,12 +97,19 @@ def process_raw_file(filepath: str) -> pd.DataFrame:
     df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
 
     # 4. Perform GeoIP Enrichment
-    geolite_path = "data/geolite2/GeoLite2-City.mmdb"
+    possible_paths = [
+        "data/geolite2/GeoLite2-City.mmdb",
+        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data", "geolite2", "GeoLite2-City.mmdb"),
+        "GeoLite2-City.mmdb",
+        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "GeoLite2-City.mmdb"),
+    ]
+    geolite_path = next((p for p in possible_paths if os.path.isfile(p)), None)
     reader = None
-    try:
-        reader = geoip2.database.Reader(geolite_path)
-    except FileNotFoundError:
-        logger.info("GeoLite2-City.mmdb not found. Falling back to default 'UNKNOWN' countries.")
+    if geolite_path:
+        try:
+            reader = geoip2.database.Reader(geolite_path)
+        except Exception as e:
+            logger.info(f"Failed to open GeoLite2 database at {geolite_path}: {e}")
 
     try:
         df['src_country'] = df['src_ip'].apply(lambda ip: get_ip_metadata(ip, reader)['country'])
