@@ -19,8 +19,8 @@ The `backend/` module serves as the central orchestration and API service layer 
 
 ```
 backend/
-├── Dockerfile                # Multi-stage container definition for FastAPI service
-├── requirements.txt          # Python dependencies for backend service layer
+├── Dockerfile                # Multi-stage container definition, updated to build exclusively from local `offline_packages/`
+├── requirements.txt          # Python dependencies (strictly pinned with `==` for deterministic offline builds)
 ├── database.py               # Database engine & session generator (PostgreSQL + SQLite fallback)
 ├── main.py                   # Application entry point, CORS middleware, lifespan & router mounts
 ├── routers/                  # API route handlers

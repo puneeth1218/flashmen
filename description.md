@@ -17,12 +17,21 @@ A hackathon monorepo for **real-time Bitcoin network traffic analysis, anomaly d
 
 | File | What It Does |
 |------|-------------|
-| `docker-compose.yml` | Orchestrates 3 services — PostgreSQL 15, FastAPI backend, React frontend — with health checks, volume mounts, and environment variable injection |
+| `docker-compose.yml` | Orchestrates 3 services — PostgreSQL 15, FastAPI backend, React frontend — with health checks, volume mounts, and environment variable injection. Updated to use root context for frontend to access offline packages. |
 | `.env.example` | Template for database credentials, GeoLite2 path, API host/port, and Vite base URL |
 | `.github/CODEOWNERS` | Maps repository paths to 6 team members (DevOps, Backend ×2, ML ×2, Graph/Frontend) |
 | `.github/workflows/ci.yml` | GitHub Actions CI pipeline — runs Flake8 linting + Pytest on Python modules, and npm build on the frontend |
 | `offline_packages/` | Directory for caching pip wheels and npm tarballs for air-gapped environments |
+| `download_offline_packages.sh` / `.ps1` | Scripts to download Python wheels via Docker (to circumvent local pip dependency) and cache npm modules locally |
 | `README.md` | Full setup guide with Docker, manual local dev, offline installation, and team role table |
+
+### DevOps Offline Infrastructure Guide
+
+To ensure the project works entirely offline (Air-gapped) for the SIH 26146 final evaluation:
+1. **Prepare Offline Dependencies**: Before disconnecting from the internet, run `./download_offline_packages.sh` (or `.ps1`). This populates `offline_packages/python` and `offline_packages/npm`.
+2. **Deterministic Builds**: Python and Node dependencies are strictly pinned to exact versions in `backend/requirements.txt` and `frontend/package.json` to guarantee reproducible behavior.
+3. **Offline Compilation**: `docker-compose build` reads directly from the local `offline_packages/` directory instead of reaching out to package registries.
+4. **Execution**: Disconnect from the internet and run `docker compose up`. The entire FastAPI, React, PostgreSQL pipeline, including local ML feature engineering and GeoIP lookups, will function without external calls.
 
 ---
 

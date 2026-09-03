@@ -16,7 +16,7 @@ The `ml/` module provides unsupervised anomaly detection, feature engineering, a
 ```
 ml/
 ├── __init__.py                   # Module exports: extract_wallet_features, extract_features, etc.
-├── dataset_gen.py                # CLI tool to generate synthetic 14-column Bitcoin traffic datasets
+├── dataset_gen.py                # CLI tool to generate synthetic 14-column datasets with deterministic seeds, anomalies (peel-chain, mixers), and ground truth (`pattern_type`).
 ├── explainer.py                  # ShapExplainer wrapper for local feature attribution triage
 ├── feature_engineering.py        # [M3] Pipeline transforming raw transactions into wallet & IP feature matrices
 ├── model.py                      # IsolationForestAnomalyDetector wrapper with 0–100 risk score calibration
@@ -48,9 +48,11 @@ ml/
   - Serves as the interface contract for TreeExplainer integration.
 
 ### 3.3 Synthetic Data Generator (`dataset_gen.py`)
-- **`generate_synthetic_dataset(num_records)`**:
+- **`generate_synthetic_dataset(num_records, seed)`**:
   - Generates realistic test records with Faker IPv4 addresses, random standard Bitcoin P2P ports (8333, 8332, 18333, non-standard ephemeral ports), valid ASNs, ISO-2 country codes, and 64-character hex transaction IDs.
-  - Supports direct CLI execution: `python ml/dataset_gen.py --output data/synthetic/sample_traffic.csv --count 500`.
+  - Injects ~5% targeted anomalous behavior (peel-chains, mixers, and IP spoofing) to test detection models, alongside ~95% normal traffic.
+  - Outputs a deterministic `pattern_type` column to serve as the ground truth label for anomaly detection evaluation.
+  - Supports direct CLI execution with reproducibility: `python ml/dataset_gen.py --output data/synthetic/sample_traffic.csv --rows 500 --seed 42`.
 
 ### 3.4 Production Feature Engineering Pipeline (`feature_engineering.py`) — Milestone M3
 - **`extract_wallet_features(df: pd.DataFrame) -> Tuple[pd.DataFrame, np.ndarray]`**:
