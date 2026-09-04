@@ -38,10 +38,11 @@ export const Sheet: React.FC<SheetProps> = ({ isOpen, onClose, children, title }
         <div className="flex items-center justify-between p-4 border-b border-zinc-800">
           <h2 className="text-lg font-semibold text-zinc-50 tracking-tight">{title || 'Details'}</h2>
           <button 
-            onClick={onClose}
-            className="p-1 rounded-sm opacity-70 hover:opacity-100 hover:bg-zinc-800 transition-opacity focus:outline-none focus:ring-2 focus:ring-zinc-400"
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            className="relative z-50 p-1 rounded-sm opacity-70 hover:opacity-100 hover:bg-zinc-800 transition-opacity focus:outline-none focus:ring-2 focus:ring-zinc-400"
           >
-            <X className="h-4 w-4 text-zinc-400" />
+            <X className="h-4 w-4 text-zinc-400 pointer-events-none" />
           </button>
         </div>
         <div className="p-4 flex-1 overflow-y-auto">
