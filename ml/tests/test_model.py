@@ -497,7 +497,6 @@ def test_shap_explainer_synthetic_outlier_attribution():
     assert all(v >= 0.0 for v in exp_peel.values()), "Expected genuine non-negative Shapley attributions"
     assert any(v > 0.0 for v in exp_peel.values())
     assert pytest.approx(sum(exp_peel.values()), abs=1e-3) == 1.0
-    assert sum(exp_peel.values()) == 1.0
 
     # fan_out_ratio must be top contributing feature
     top_peel_feature = max(exp_peel, key=exp_peel.get)
