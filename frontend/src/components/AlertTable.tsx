@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { AlertData } from '../services/api/alerts';
-import { ShieldAlert } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { AlertData, clearAlerts } from '../services/api/alerts';
+import { ShieldAlert, Trash2 } from 'lucide-react';
 import { Badge, BadgeVariant } from './ui/Badge';
 import { Sheet } from './ui/Sheet';
 
@@ -11,6 +12,8 @@ interface AlertTableProps {
 
 export const AlertTable: React.FC<AlertTableProps> = ({ alerts, onSelectAlert }) => {
   const [selectedEntity, setSelectedEntity] = useState<AlertData | null>(null);
+  const [isClearing, setIsClearing] = useState(false);
+  const queryClient = useQueryClient();
 
   const getRiskBadgeVariant = (score: number): BadgeVariant => {
     if (score >= 75) return 'critical';
@@ -18,10 +21,44 @@ export const AlertTable: React.FC<AlertTableProps> = ({ alerts, onSelectAlert })
     return 'neutral';
   };
 
+  const cleanReason = (reason?: string): string => {
+    return (reason || '').replace(/^flagged due to:\s*/i, '').trim();
+  };
+
+  const uniqueAlerts = React.useMemo(() => {
+    const seen = new Set<string>();
+    const result: AlertData[] = [];
+    for (const alert of alerts) {
+      const key = `${alert.entity_id}-${alert.entity_type}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push({
+          ...alert,
+          reason: cleanReason(alert.reason),
+        });
+      }
+    }
+    return result;
+  }, [alerts]);
+
   const handleRowClick = (alert: AlertData) => {
     setSelectedEntity(alert);
     if (onSelectAlert) {
       onSelectAlert(alert);
+    }
+  };
+
+  const handleClearAll = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsClearing(true);
+    try {
+      await clearAlerts();
+      await queryClient.invalidateQueries({ queryKey: ['alerts'] });
+      await queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
+    } catch (err) {
+      console.error('Failed to clear alerts:', err);
+    } finally {
+      setIsClearing(false);
     }
   };
 
@@ -32,9 +69,22 @@ export const AlertTable: React.FC<AlertTableProps> = ({ alerts, onSelectAlert })
           <h3 className="text-[32px] font-semibold text-ink tracking-apple-subhead">
             Selected Alerts
           </h3>
-          <span className="text-[17px] tracking-apple-body text-mid-gray">
-            {alerts.length} Detected
-          </span>
+          <div className="flex items-center gap-4">
+            <span className="text-[17px] tracking-apple-body text-mid-gray">
+              {uniqueAlerts.length} Detected
+            </span>
+            {uniqueAlerts.length > 0 && (
+              <button
+                type="button"
+                onClick={handleClearAll}
+                disabled={isClearing}
+                className="text-[13px] px-3.5 py-1.5 rounded-full border border-hairline hover:border-red-500/50 hover:bg-red-500/10 text-mid-gray hover:text-red-400 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                {isClearing ? 'Clearing...' : 'Clear All Logs'}
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="overflow-x-auto px-4">
@@ -50,14 +100,14 @@ export const AlertTable: React.FC<AlertTableProps> = ({ alerts, onSelectAlert })
               </tr>
             </thead>
             <tbody className="divide-y divide-hairline/30">
-              {alerts.length === 0 ? (
+              {uniqueAlerts.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-4 py-12 text-center text-mid-gray tracking-apple-body">
                     No alerts found
                   </td>
                 </tr>
               ) : (
-                alerts.map((alert, idx) => (
+                uniqueAlerts.map((alert, idx) => (
                   <tr
                     key={`${alert.entity_id}-${idx}`}
                     onClick={() => handleRowClick(alert)}

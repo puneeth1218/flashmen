@@ -25,3 +25,8 @@ export const fetchDashboardStats = async (): Promise<DashboardStats> => {
   const response = await apiClient.get<DashboardStats>('/api/v1/dashboard/stats');
   return response.data;
 };
+
+export const clearAlerts = async (): Promise<{ status: string; message: string; cleared_count: number }> => {
+  const response = await apiClient.post('/api/v1/alerts/clear');
+  return response.data;
+};

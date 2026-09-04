@@ -334,8 +334,8 @@ def test_anomalous_wallets_return_top_risk_factors():
     peel_tag = INVESTIGATIVE_TAG_MAPPING["fan_out_ratio"]
     assert peel_tag in risk_factors or INVESTIGATIVE_TAG_MAPPING["total_volume_out"] in risk_factors
 
-    # Confirm reason string format
-    assert "Flagged due to:" in peel_row["reason"]
+    # Confirm reason string format starts directly without redundant prefix
+    assert not peel_row["reason"].startswith("Flagged due to:")
     assert any(tag in peel_row["reason"] for tag in risk_factors)
 
 
@@ -591,4 +591,51 @@ def test_shap_explainer_edge_cases_and_matrix_inputs():
     exp_zero = zero_exp.explain_instance(zero_var_matrix[0])
     assert not any(np.isnan(v) or np.isinf(v) for v in exp_zero.values())
     assert sum(exp_zero.values()) == 1.0
+
+
+def test_score_entities_dynamic_and_clean_identifiers():
+    """
+    Validates that score_entities evaluates transactions dynamically:
+    - Produces varied risk scores (not uniform static 92.1).
+    - Produces distinct reasons reflecting pattern matches.
+    - Ensures entity identifiers are clean strings without brackets or quotes.
+    """
+    from backend.services.scoring import score_entities
+    from ml.dataset_gen import generate_synthetic_dataset
+    from backend.services.ingestion import process_raw_file
+
+    raw_df = generate_synthetic_dataset(num_records=60, seed=42)
+    processed_df = process_raw_file(raw_df)
+
+    alerts = score_entities(processed_df)
+
+    assert len(alerts) > 0
+
+    # 1. Identifier cleanliness (no brackets, no quotes, no lists)
+    for a in alerts:
+        assert isinstance(a.entity_id, str)
+        assert not a.entity_id.startswith("[")
+        assert not a.entity_id.endswith("]")
+        assert "'" not in a.entity_id
+        assert '"' not in a.entity_id
+        assert len(a.entity_id) > 0
+
+    # 2. Dynamic varied risk scores (not all 92.1)
+    risk_scores = [a.risk_score for a in alerts]
+    unique_scores = set(risk_scores)
+    assert len(unique_scores) > 1, f"Expected varied risk scores, got {unique_scores}"
+    assert not all(s == 92.1 for s in risk_scores)
+
+    # 3. Dynamic reasons
+    reasons = [a.reason for a in alerts]
+    unique_reasons = set(reasons)
+    assert len(unique_reasons) > 1, f"Expected varied reasons, got {unique_reasons}"
+
+    # 4. Valid entity types
+    for a in alerts:
+        assert a.entity_type in ("wallet", "ip")
+        assert 0.0 <= a.risk_score <= 100.0
+        assert 0.0 <= a.confidence <= 1.0
+        assert isinstance(a.shap_explanation, dict)
+
 

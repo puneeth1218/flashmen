@@ -98,6 +98,11 @@ export const fetchDashboardStats = async (): Promise<DashboardStats> => {
   return response.data;
 };
 
+export const clearAlerts = async (): Promise<{ status: string; message: string; cleared_count: number }> => {
+  const response = await apiClient.post('/api/v1/alerts/clear');
+  return response.data;
+};
+
 export const fetchNetworkGraph = async (
   entityId?: string,
   depth = 2
