@@ -1,0 +1,54 @@
+.graph-viewer {
+  position: relative;
+  border: 1px solid #333;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.node-detail-panel {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 240px;
+  background: #1e1e1e;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 16px;
+  color: #eee;
+}
+
+.node-detail-panel .close-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.node-detail-panel .entity-id {
+  font-size: 11px;
+  color: #999;
+  word-break: break-all;
+  text-transform: capitalize;
+}
+
+.node-detail-panel .risk-score {
+  margin: 8px 0;
+  font-size: 14px;
+}
+
+.node-detail-panel .reason {
+  font-size: 12px;
+  color: #ccc;
+  line-height: 1.4;
+}
+
+.node-detail-panel .shap-list {
+  margin-top: 8px;
+  padding-left: 16px;
+  font-size: 11px;
+  color: #aaa;
+}
