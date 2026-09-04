@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { AlertData } from '../services/api';
-import { AlertTriangle, ChevronRight, Info } from 'lucide-react';
+import { AlertData } from '../services/api/alerts';
+import { ShieldAlert } from 'lucide-react';
+import { Badge, BadgeVariant } from './ui/Badge';
+import { Sheet } from './ui/Sheet';
 
 interface AlertTableProps {
   alerts: AlertData[];
@@ -10,10 +12,10 @@ interface AlertTableProps {
 export const AlertTable: React.FC<AlertTableProps> = ({ alerts, onSelectAlert }) => {
   const [selectedEntity, setSelectedEntity] = useState<AlertData | null>(null);
 
-  const getRiskBadgeColor = (score: number) => {
-    if (score >= 75) return 'bg-red-900/50 text-red-400 border-red-700';
-    if (score >= 40) return 'bg-amber-900/50 text-amber-400 border-amber-700';
-    return 'bg-emerald-900/50 text-emerald-400 border-emerald-700';
+  const getRiskBadgeVariant = (score: number): BadgeVariant => {
+    if (score >= 75) return 'critical';
+    if (score >= 40) return 'warning';
+    return 'neutral';
   };
 
   const handleRowClick = (alert: AlertData) => {
@@ -24,97 +26,125 @@ export const AlertTable: React.FC<AlertTableProps> = ({ alerts, onSelectAlert })
   };
 
   return (
-    <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-      <div className="p-5 border-b border-gray-700 flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-          <AlertTriangle className="h-5 w-5 text-amber-500" />
-          Anomalous Traffic & Transaction Alerts
-        </h3>
-        <span className="text-xs bg-gray-700 text-gray-300 px-3 py-1 rounded-full">
-          {alerts.length} Detected
-        </span>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm text-gray-300">
-          <thead className="bg-gray-900/50 text-xs uppercase text-gray-400 font-semibold border-b border-gray-700">
-            <tr>
-              <th className="px-6 py-4">Type</th>
-              <th className="px-6 py-4">Entity Identifier</th>
-              <th className="px-6 py-4">Risk Score</th>
-              <th className="px-6 py-4">Confidence</th>
-              <th className="px-6 py-4">Primary Reason</th>
-              <th className="px-6 py-4 text-right">Details</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-700/50">
-            {alerts.map((alert, idx) => (
-              <tr
-                key={`${alert.entity_id}-${idx}`}
-                onClick={() => handleRowClick(alert)}
-                className="hover:bg-gray-700/40 cursor-pointer transition"
-              >
-                <td className="px-6 py-4">
-                  <span
-                    className={`inline-block px-2.5 py-1 text-xs font-semibold rounded uppercase ${
-                      alert.entity_type === 'wallet'
-                        ? 'bg-purple-900/40 text-purple-400 border border-purple-800'
-                        : 'bg-blue-900/40 text-blue-400 border border-blue-800'
-                    }`}
-                  >
-                    {alert.entity_type}
-                  </span>
-                </td>
-                <td className="px-6 py-4 font-mono text-gray-200">{alert.entity_id}</td>
-                <td className="px-6 py-4">
-                  <span
-                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getRiskBadgeColor(
-                      alert.risk_score
-                    )}`}
-                  >
-                    {alert.risk_score.toFixed(1)} / 100
-                  </span>
-                </td>
-                <td className="px-6 py-4 font-mono text-gray-400">
-                  {(alert.confidence * 100).toFixed(0)}%
-                </td>
-                <td className="px-6 py-4 max-w-md truncate text-gray-300">{alert.reason}</td>
-                <td className="px-6 py-4 text-right">
-                  <ChevronRight className="h-5 w-5 text-gray-400 inline" />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* SHAP Explanation Modal Stub */}
-      {selectedEntity && (
-        <div className="p-6 bg-gray-900/80 border-t border-gray-700">
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="font-semibold text-white flex items-center gap-2">
-              <Info className="h-4 w-4 text-amber-400" />
-              SHAP Feature Attribution: {selectedEntity.entity_id}
-            </h4>
-            <button
-              onClick={() => setSelectedEntity(null)}
-              className="text-gray-400 hover:text-white text-xs"
-            >
-              Close Breakdown
-            </button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-mono">
-            {Object.entries(selectedEntity.shap_explanation).map(([feat, val]) => (
-              <div key={feat} className="bg-gray-800 p-3 rounded border border-gray-700">
-                <span className="text-gray-400 block">{feat}</span>
-                <span className="text-amber-400 font-bold text-sm">
-                  +{(val * 100).toFixed(1)}% risk impact
-                </span>
-              </div>
-            ))}
-          </div>
+    <>
+      <div className="bg-paper rounded-apple-card shadow-none overflow-hidden pb-4 border border-hairline relative z-10">
+        <div className="p-8 flex items-center justify-between">
+          <h3 className="text-[32px] font-semibold text-ink tracking-apple-subhead">
+            Selected Alerts
+          </h3>
+          <span className="text-[17px] tracking-apple-body text-mid-gray">
+            {alerts.length} Detected
+          </span>
         </div>
-      )}
-    </div>
+
+        <div className="overflow-x-auto px-4">
+          <table className="w-full text-left text-[17px] text-ink tracking-apple-body">
+            <thead className="bg-transparent text-[14px] font-medium text-mid-gray border-b border-hairline/50">
+              <tr>
+                <th className="px-4 py-4 font-normal">Type</th>
+                <th className="px-4 py-4 font-normal">Entity Identifier</th>
+                <th className="px-4 py-4 font-normal">Risk Score</th>
+                <th className="px-4 py-4 font-normal">Confidence</th>
+                <th className="px-4 py-4 font-normal">Primary Reason</th>
+                <th className="px-4 py-4 text-right font-normal">Details</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-hairline/30">
+              {alerts.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-12 text-center text-mid-gray tracking-apple-body">
+                    No alerts found
+                  </td>
+                </tr>
+              ) : (
+                alerts.map((alert, idx) => (
+                  <tr
+                    key={`${alert.entity_id}-${idx}`}
+                    onClick={() => handleRowClick(alert)}
+                    className="hover:bg-canvas cursor-pointer transition-colors"
+                  >
+                    <td className="px-4 py-5">
+                      <span className="text-[14px] tracking-apple-body text-mid-gray">
+                        {alert.entity_type}
+                      </span>
+                    </td>
+                    <td className="px-4 py-5 font-mono text-ink text-[14px]">{alert.entity_id}</td>
+                    <td className="px-4 py-5">
+                      <Badge variant={getRiskBadgeVariant(alert.risk_score)}>
+                        {alert.risk_score.toFixed(1)} / 100
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-5 text-mid-gray text-[14px]">
+                      {(alert.confidence * 100).toFixed(0)}%
+                    </td>
+                    <td className="px-4 py-5 max-w-md truncate text-mid-gray text-[14px]">{alert.reason}</td>
+                    <td className="px-4 py-5 text-right">
+                      <span className="text-[24px] text-link-blue hover:opacity-70 leading-none transition-opacity">›</span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <Sheet 
+        isOpen={!!selectedEntity} 
+        onClose={() => setSelectedEntity(null)}
+        title="Alert Details"
+      >
+        {selectedEntity && (
+          <div className="space-y-6 text-sm">
+            {/* Header / Identity */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="inline-block px-2 py-0.5 text-[10px] font-bold rounded uppercase bg-zinc-800 text-zinc-300 border border-zinc-700">
+                  {selectedEntity.entity_type}
+                </span>
+                <Badge variant={getRiskBadgeVariant(selectedEntity.risk_score)}>
+                  Risk Score: {selectedEntity.risk_score.toFixed(1)}
+                </Badge>
+              </div>
+              <h3 className="text-xl font-mono text-zinc-50 break-all border-b border-zinc-800 pb-4">
+                {selectedEntity.entity_id}
+              </h3>
+            </div>
+
+            {/* Reason */}
+            <div>
+              <h4 className="font-semibold text-zinc-400 uppercase text-xs mb-2 tracking-wider">Detection Reason</h4>
+              <div className="bg-zinc-900 border border-zinc-800 p-3 rounded-md text-zinc-300 leading-relaxed">
+                {selectedEntity.reason}
+              </div>
+            </div>
+
+            {/* SHAP Values */}
+            {selectedEntity.shap_explanation && Object.keys(selectedEntity.shap_explanation).length > 0 && (
+              <div>
+                <h4 className="font-semibold text-zinc-400 uppercase text-xs mb-2 tracking-wider flex items-center gap-2">
+                  <ShieldAlert className="h-3 w-3" />
+                  SHAP Feature Attribution
+                </h4>
+                <div className="bg-zinc-900 border border-zinc-800 rounded-md divide-y divide-zinc-800 font-mono text-xs">
+                  {Object.entries(selectedEntity.shap_explanation).map(([feature, impact]) => {
+                    const impactPercentage = (impact * 100).toFixed(1);
+                    const isPositive = impact >= 0;
+                    return (
+                      <div key={feature} className="flex items-center justify-between p-3 hover:bg-zinc-800/50 transition-colors">
+                        <span className="text-zinc-400">{feature}</span>
+                        <span className={isPositive ? 'text-amber-400' : 'text-emerald-400'}>
+                          {isPositive ? '+' : ''}{impactPercentage}%
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </Sheet>
+    </>
   );
 };
