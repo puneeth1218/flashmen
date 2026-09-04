@@ -7,7 +7,7 @@ export const Skeleton = React.forwardRef<HTMLDivElement, SkeletonProps>(
     return (
       <div
         ref={ref}
-        className={`animate-pulse rounded-md bg-zinc-800 ${className}`}
+        className={`animate-pulse rounded-[14px] bg-cool-wash ${className}`}
         {...props}
       />
     );

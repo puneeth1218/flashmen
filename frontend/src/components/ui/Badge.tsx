@@ -12,24 +12,24 @@ export const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(
     
     switch (variant) {
       case 'critical':
-        variantStyles = 'bg-red-950 text-red-400 border-red-900';
+        variantStyles = 'border-ember text-ember';
         break;
       case 'warning':
-        variantStyles = 'bg-yellow-950 text-yellow-400 border-yellow-900';
+        variantStyles = 'border-orange-500 text-orange-600';
         break;
       case 'success':
-        variantStyles = 'bg-green-950 text-green-400 border-green-900';
+        variantStyles = 'border-green-500 text-green-600';
         break;
       case 'neutral':
       default:
-        variantStyles = 'bg-zinc-800 text-zinc-300 border-zinc-700';
+        variantStyles = 'border-ink text-ink';
         break;
     }
 
     return (
       <div
         ref={ref}
-        className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-400 focus:ring-offset-2 ${variantStyles} ${className}`}
+        className={`inline-flex items-center rounded-apple-pill border px-4 py-1.5 text-[14px] tracking-apple-body transition-colors bg-transparent ${variantStyles} ${className}`}
         {...props}
       />
     );

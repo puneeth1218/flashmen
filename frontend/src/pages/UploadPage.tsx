@@ -37,20 +37,24 @@ export const UploadPage: React.FC = () => {
   };
 
   return (
-    <div className="p-8 max-w-3xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-          <UploadCloud className="h-6 w-6 text-amber-500" />
-          Ingest Network Traffic Logs
+    <div className="p-8 max-w-[800px] mx-auto mt-20 relative z-10">
+      <div className="mb-10">
+        <h1 className="text-[40px] font-bold tracking-apple-heading text-white flex items-center gap-3">
+          Ingest Telemetry
         </h1>
-        <p className="text-sm text-gray-400 mt-1">
+        <p className="text-[14px] tracking-apple-body text-mid-gray mt-2">
           Upload raw CSV or JSON Bitcoin network PCAP logs for ingestion, parsing, and anomaly scoring.
         </p>
       </div>
 
-      <form onSubmit={handleUpload} className="bg-gray-800 p-8 rounded-xl border border-gray-700 space-y-6">
-        <div className="border-2 border-dashed border-gray-600 rounded-xl p-8 text-center hover:border-amber-500 transition">
-          <FileText className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+      <form onSubmit={handleUpload} className="bg-paper rounded-apple-card border border-hairline p-10 space-y-8">
+        <div 
+          className={`rounded-apple-card p-12 text-center transition-colors cursor-pointer border ${
+            file ? 'border-white bg-white/5' : 'border-hairline hover:border-mid-gray bg-transparent'
+          }`}
+          onClick={() => document.getElementById('file-upload')?.click()}
+        >
+          <FileText className="h-12 w-12 text-mid-gray mx-auto mb-4" strokeWidth={1.5} />
           <input
             type="file"
             accept=".csv,.json,.jsonl"
@@ -58,35 +62,33 @@ export const UploadPage: React.FC = () => {
             className="hidden"
             id="file-upload"
           />
-          <label
-            htmlFor="file-upload"
-            className="cursor-pointer font-medium text-amber-400 hover:text-amber-300"
-          >
-            Click to browse
-          </label>
-          <span className="text-gray-400 text-sm"> or drop file here</span>
-          <p className="text-xs text-gray-500 mt-2">Supports .CSV, .JSON, .JSONL files</p>
-
-          {file && (
-            <div className="mt-4 p-3 bg-gray-900 rounded-lg text-sm font-mono text-gray-200 inline-block border border-gray-700">
-              Selected: {file.name} ({(file.size / 1024).toFixed(1)} KB)
+          
+          {file ? (
+            <div className="text-[14px] tracking-apple-body text-white">
+              <span className="font-semibold">{file.name}</span>
+              <span className="text-mid-gray ml-2">({(file.size / 1024).toFixed(1)} KB)</span>
+            </div>
+          ) : (
+            <div>
+              <p className="text-white text-[14px] font-medium tracking-apple-body">Click to browse or drop file here</p>
+              <p className="text-mid-gray text-[12px] tracking-apple-body mt-1">Supports .CSV, .JSON, .JSONL files</p>
             </div>
           )}
         </div>
 
         {error && (
-          <div className="p-4 bg-red-900/40 border border-red-700 rounded-lg text-red-300 text-sm flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 text-red-400 shrink-0" />
+          <div className="p-4 bg-red-950/30 border border-ember/30 rounded-lg text-ember text-[14px] tracking-apple-body flex items-center gap-2">
+            <AlertCircle className="h-5 w-5 shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
         {result && (
-          <div className="p-4 bg-emerald-900/40 border border-emerald-700 rounded-lg text-emerald-300 text-sm flex items-start gap-3">
-            <CheckCircle className="h-5 w-5 text-emerald-400 shrink-0 mt-0.5" />
+          <div className="p-4 bg-green-950/30 border border-green-500/30 rounded-lg text-green-500 text-[14px] tracking-apple-body flex items-start gap-3">
+            <CheckCircle className="h-5 w-5 shrink-0 mt-0.5" />
             <div>
               <p className="font-semibold">{result.message}</p>
-              <ul className="text-xs text-emerald-400/90 mt-1 space-y-1">
+              <ul className="text-[12px] text-green-500/80 mt-1 space-y-1">
                 <li>• Processed Records: {result.processed_records}</li>
                 <li>• Flagged Suspicious Entities: {result.generated_alerts_count}</li>
               </ul>
@@ -94,13 +96,15 @@ export const UploadPage: React.FC = () => {
           </div>
         )}
 
-        <button
-          type="submit"
-          disabled={!file || uploading}
-          className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white py-3 rounded-lg font-medium transition"
-        >
-          {uploading ? 'Processing & Scoring...' : 'Ingest & Run Models'}
-        </button>
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            disabled={!file || uploading}
+            className="flex items-center gap-2 px-8 py-3 bg-white text-black text-[14px] font-bold tracking-apple-body rounded-apple-pill hover:opacity-90 disabled:bg-cool-wash disabled:text-mid-gray disabled:cursor-not-allowed transition-all"
+          >
+            {uploading ? 'Processing & Scoring...' : 'Ingest & Run Models'}
+          </button>
+        </div>
       </form>
     </div>
   );

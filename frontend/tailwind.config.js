@@ -7,32 +7,32 @@ export default {
   theme: {
     extend: {
       colors: {
-        slate: {
-          50: '#f8fafc',
-          100: '#f1f5f9',
-          200: '#e2e8f0',
-          300: '#cbd5e1',
-          400: '#94a3b8',
-          500: '#64748b',
-          600: '#475569',
-          700: '#334155',
-          800: '#1e293b',
-          900: '#0f172a',
-          950: '#020617',
-        },
-        zinc: {
-          50: '#fafafa',
-          100: '#f4f4f5',
-          200: '#e4e4e7',
-          300: '#d4d4d8',
-          400: '#a1a1aa',
-          500: '#71717a',
-          600: '#52525b',
-          700: '#3f3f46',
-          800: '#27272a',
-          900: '#18181b',
-          950: '#09090b',
-        },
+        // Aceternity Dark Theme Colors
+        paper: '#09090b',        // Primary card/page surface (zinc-950)
+        canvas: '#000000',       // Deep black background
+        ink: '#ffffff',          // Primary text
+        'mid-gray': '#a1a1aa',   // Secondary text (zinc-400)
+        hairline: '#27272a',     // Borders (zinc-800)
+        'cool-wash': '#18181b',  // Hover states (zinc-900)
+        faded: '#000000',        // Global nav overlay
+        'electric-blue': '#ffffff', // Primary CTAs (White in Aceternity)
+        'link-blue': '#a1a1aa',  // Inline links
+        ember: '#ef4444',        // Alert/Nuevo badge
+      },
+      fontFamily: {
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+      },
+      letterSpacing: {
+        'apple-hero': '-0.04em',
+        'apple-display': '-0.02em',
+        'apple-heading': '-0.01em',
+        'apple-subhead': '0',
+        'apple-body': '0',
+      },
+      borderRadius: {
+        'apple-card': '12px',
+        'apple-pill': '999px',
       }
     },
   },
