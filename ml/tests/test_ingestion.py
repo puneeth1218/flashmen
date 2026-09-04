@@ -184,8 +184,20 @@ def test_process_raw_file_with_dataframe():
 def test_api_ingest_csv_and_json(tmp_path):
     """Verifies that POST /api/v1/ingest accepts CSV, JSON, and nested formats seamlessly."""
     try:
+        import inspect
+        import httpx
+        # Compatibility shim: In httpx >= 0.28.0, the deprecated 'app' parameter was removed
+        # from httpx.Client.__init__. Starlette < 0.28.0 (used by FastAPI 0.100.0) still passes
+        # app=self.app to super().__init__. Discard 'app' if httpx does not accept it.
+        _orig_httpx_init = httpx.Client.__init__
+        if "app" not in inspect.signature(_orig_httpx_init).parameters:
+            def _patched_httpx_init(self, *args, **kwargs):
+                kwargs.pop("app", None)
+                return _orig_httpx_init(self, *args, **kwargs)
+            httpx.Client.__init__ = _patched_httpx_init
+
         from fastapi.testclient import TestClient
-    except ModuleNotFoundError:
+    except (ModuleNotFoundError, ImportError):
         pytest.skip("httpx is required to run FastAPI TestClient")
 
     from backend.main import app
