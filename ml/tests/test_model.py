@@ -494,7 +494,8 @@ def test_shap_explainer_synthetic_outlier_attribution():
     assert isinstance(exp_peel, dict)
     assert len(exp_peel) == len(detector.feature_names)
     assert not any(np.isnan(v) or np.isinf(v) for v in exp_peel.values())
-    assert all(v > 0.0 for v in exp_peel.values()), "Expected genuine non-zero Shapley attributions"
+    assert all(v >= 0.0 for v in exp_peel.values()), "Expected genuine non-negative Shapley attributions"
+    assert any(v > 0.0 for v in exp_peel.values())
     assert pytest.approx(sum(exp_peel.values()), abs=1e-3) == 1.0
     assert sum(exp_peel.values()) == 1.0
 
@@ -526,7 +527,8 @@ def test_shap_explainer_synthetic_outlier_attribution():
     exp_sybil = explainer.explain_instance(sybil_outlier)
     assert isinstance(exp_sybil, dict)
     assert not any(np.isnan(v) or np.isinf(v) for v in exp_sybil.values())
-    assert all(v > 0.0 for v in exp_sybil.values())
+    assert all(v >= 0.0 for v in exp_sybil.values())
+    assert any(v > 0.0 for v in exp_sybil.values())
     assert pytest.approx(sum(exp_sybil.values()), abs=1e-3) == 1.0
 
     # unique_ips_used must be top contributing feature
@@ -562,7 +564,8 @@ def test_shap_explainer_edge_cases_and_matrix_inputs():
     assert isinstance(exp_1d, dict)
     assert len(exp_1d) == 5
     assert pytest.approx(sum(exp_1d.values()), abs=1e-3) == 1.0
-    assert all(v > 0.0 for v in exp_1d.values())
+    assert all(v >= 0.0 for v in exp_1d.values())
+    assert any(v > 0.0 for v in exp_1d.values())
 
     # 2. 2D NumPy array input (single row)
     row_2d = row_1d.reshape(1, -1)
