@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import GraphViewer from '../components/graph/GraphViewer';
+import {GraphViewer} from '../components/graph/GraphViewer';
 import { fetchNetworkGraph, CytoscapeGraphResponse } from '../services/api';
 import { GitFork, Filter } from 'lucide-react';
 
