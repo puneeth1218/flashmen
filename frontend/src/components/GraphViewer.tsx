@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
-import cytoscape, { Core, NodeSingular, Stylesheet } from 'cytoscape';
+import cytoscape, { Core, NodeSingular, StylesheetCSS } from 'cytoscape';
 import CytoscapeComponent from 'react-cytoscapejs';
 import { Search, RotateCcw } from 'lucide-react';
 import { CytoscapeGraphResponse } from '../services/api';
@@ -47,7 +47,11 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({ graphData }) => {
     (cy: Core) => {
       cyRef.current = cy;
       cy.off('tap');
-      cy.on('tap', 'node', (evt) => focusNode(evt.target));
+      cy.on('tap', 'node', (evt) => {
+        if (evt.target.isNode()) {
+          focusNode(evt.target);
+        }
+      });
       cy.on('tap', (evt) => {
         if (evt.target === cy) clearFocus();
       });
@@ -102,7 +106,7 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({ graphData }) => {
     })),
   ];
 
-  const stylesheet: Stylesheet[] = [
+  const stylesheet: StylesheetCSS[] = [
     {
       selector: 'node',
       style: {
