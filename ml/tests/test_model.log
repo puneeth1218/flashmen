@@ -1,0 +1,30 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.13, pytest-9.1.1, pluggy-1.6.0 -- /mnt/c/Users/Praneeth Tadi/Documents/_SIH_bitcoin_traffic_monitor/flashmen/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /mnt/c/Users/Praneeth Tadi/Documents/_SIH_bitcoin_traffic_monitor/flashmen
+plugins: anyio-4.14.2, Faker-40.38.0
+collecting ... collected 9 items
+
+ml/tests/test_model.py::test_isolation_forest_fit_predict PASSED
+ml/tests/test_model.py::test_isolation_forest_numpy_array_input PASSED
+ml/tests/test_model.py::test_risk_score_bounds_and_calibration PASSED
+ml/tests/test_model.py::test_synthetic_outlier_wallets_score_significantly_higher PASSED
+ml/tests/test_model.py::test_signal_breakdown_attribution PASSED
+ml/tests/test_model.py::test_anomalous_wallets_return_top_risk_factors PASSED
+ml/tests/test_model.py::test_injected_extreme_feature_attribution PASSED
+ml/tests/test_model.py::test_attribution_edge_cases_zero_variance_and_uniform PASSED
+ml/tests/test_model.py::test_shap_explainer PASSED
+
+============================== slowest durations ===============================
+0.75s call     ml/tests/test_model.py::test_synthetic_outlier_wallets_score_significantly_higher
+0.33s call     ml/tests/test_model.py::test_isolation_forest_fit_predict
+0.13s call     ml/tests/test_model.py::test_attribution_edge_cases_zero_variance_and_uniform
+0.11s call     ml/tests/test_model.py::test_anomalous_wallets_return_top_risk_factors
+0.10s call     ml/tests/test_model.py::test_risk_score_bounds_and_calibration
+0.07s call     ml/tests/test_model.py::test_isolation_forest_numpy_array_input
+0.07s call     ml/tests/test_model.py::test_injected_extreme_feature_attribution
+0.06s call     ml/tests/test_model.py::test_signal_breakdown_attribution
+0.03s setup    ml/tests/test_model.py::test_isolation_forest_fit_predict
+
+(18 durations < 0.005s hidden.  Use -vv to show these durations.)
+============================== 9 passed in 49.32s ==============================

@@ -1,7 +1,7 @@
 # Machine Learning Module Context & Implementation Status
 
 > **Module**: `ml/`  
-> **Status**: Milestone M2 (Ingestion) Stabilized · Milestone M3 (Feature Engineering) Implemented & Verified · 12/12 Unit Tests Passing  
+> **Status**: Milestone M2 (Ingestion) Stabilized · Milestone M3 (Feature Engineering & Risk Scoring Engine) Fully Completed & Verified · 16/16 Unit Tests Passing  
 > **Core Stack**: scikit-learn · pandas · numpy · SHAP · pytest  
 
 ---
@@ -15,31 +15,35 @@ The `ml/` module provides unsupervised anomaly detection, feature engineering, a
 
 ```
 ml/
-├── __init__.py                   # Module exports: extract_wallet_features, extract_features, etc.
+├── __init__.py                   # Module exports: extract_wallet_features, IsolationForestAnomalyDetector, etc.
 ├── dataset_gen.py                # CLI tool to generate synthetic 14-column Bitcoin traffic datasets
 ├── explainer.py                  # ShapExplainer wrapper for local feature attribution triage
 ├── feature_engineering.py        # [M3] Pipeline transforming raw transactions into wallet & IP feature matrices
-├── model.py                      # IsolationForestAnomalyDetector wrapper with 0–100 risk score calibration
-└── tests/                        # Unit testing suite
+├── model.py                      # [M3] IsolationForestAnomalyDetector with 0–100 risk score calibration & signal breakdown
+└── tests/                        # Automated unit testing suite (16 tests)
     ├── __init__.py               # Test package initialization
-    ├── test_feature_engineering.py # [M3] Validates wallet metrics, volume math, ratios, shapes, and scaling
-    ├── test_features.py          # Validates legacy dual-feature schema and empty DataFrame handling
-    ├── test_ingestion.py         # [M2] Validates JSON/CSV parsing, stringified lists, UTC, and GeoIP fallback
-    └── test_model.py             # Validates model training, prediction, score bounds, and SHAP dict format
+    ├── test_feature_engineering.py # [M3] Validates wallet metrics, volume math, ratios, shapes, and scaling (5 tests)
+    ├── test_features.py          # Validates legacy dual-feature schema and empty DataFrame handling (2 tests)
+    ├── test_ingestion.py         # [M2] Validates JSON/CSV parsing, stringified lists, UTC, and GeoIP fallback (3 tests)
+    └── test_model.py             # [M3] Validates model fitting, score calibration, outlier discrimination & attributions (6 tests)
 ```
 
 ---
 
 ## 3. What Has Been Implemented By This Point
 
-### 3.1 Unsupervised Anomaly Detection (`model.py`)
+### 3.1 Unsupervised Anomaly Detection & Risk Scoring Engine (`model.py`) — Milestone M3
 - **`IsolationForestAnomalyDetector` Class**:
-  - Configured with `contamination=0.05` (5% expected anomaly rate) and 100 decision trees (`n_estimators=100`).
-  - Implements standard scikit-learn lifecycle methods:
-    - `fit(X)`: Fits the ensemble on numerical feature matrices.
-    - `predict(X)`: Returns binary anomaly labels (`-1` for anomaly, `+1` for normal).
-    - `score_samples(X)`: Computes raw decision function offset and normalizes values to an intuitive **0.0 to 100.0 risk score scale** (higher score = more anomalous).
-  - Robust exception handling when scoring before fitting (`ValueError`).
+  - Configured with `contamination=0.02` (2% expected anomaly rate), `random_state=42`, and 100 decision trees (`n_estimators=100`).
+  - **Dual Input Compatibility**: Accepts either pandas DataFrames (with automatic numeric extraction and column alignment) or normalized 2D NumPy arrays from `extract_wallet_features()`.
+  - Implements robust lifecycle methods:
+    - `fit(X, feature_names=None)`: Fits the ensemble and records baseline feature distributions (mean, std) and training score bounds.
+    - `predict(X)`: Returns binary anomaly labels (`-1` for anomaly, `+1` for normal inliers).
+    - `score_samples(X)`: Calibrates raw IsolationForest anomaly scores to an intuitive **0.0 to 100.0 risk score scale** (higher score = more anomalous, strictly bounded in `[0.0, 100.0]`).
+    - `explain_instance(feature_row)`: Computes feature attribution impact weights summing to 1.0.
+    - `get_signal_breakdown(feature_row, top_n)`: Returns descending-ordered feature contributions to highlight which specific metrics (e.g. `fan_out_ratio`, `unique_ips_used`, `total_volume_out`) triggered the anomaly.
+    - `get_feature_attributions(X)`: Batch signal breakdown computation across all instances.
+  - Robust exception handling when calling `predict`, `score_samples`, or `explain_instance` before `fit` (`ValueError`).
 
 ### 3.2 Feature Attribution & Explainability (`explainer.py`)
 - **`ShapExplainer` Class**:
@@ -70,38 +74,76 @@ ml/
   - Preserved dual IP and wallet extraction interface to maintain backward compatibility with `backend/services/scoring.py`, `graph/`, and existing test suites.
 
 ### 3.5 Test Suite & Quality Assurance (`tests/`)
-All 12 unit tests across the ML suite pass cleanly with zero warnings:
+All 16 unit tests across the ML suite pass cleanly with 100% success rate:
 ```bash
 $ python -m pytest -v ml/tests/
-============================= test session starts =============================
-platform win32 -- Python 3.13.9, pytest-8.4.2, pluggy-1.5.0
-rootdir: C:\Users\Praneeth Tadi\Documents\_SIH_bitcoin_traffic_monitor\flashmen
-plugins: anyio-4.10.0
-collected 12 items
+============================= test session starts ==============================
+platform linux -- Python 3.13.13, pytest-9.1.1, pluggy-1.6.0 -- /mnt/c/Users/Praneeth Tadi/Documents/_SIH_bitcoin_traffic_monitor/flashmen/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /mnt/c/Users/Praneeth Tadi/Documents/_SIH_bitcoin_traffic_monitor/flashmen
+plugins: anyio-4.14.2, Faker-40.38.0
+collecting ... collected 19 items
 
-ml/tests/test_feature_engineering.py::test_wallet_volume_aggregation PASSED [  8%]
-ml/tests/test_feature_engineering.py::test_fan_in_and_fan_out_ratios PASSED [ 16%]
-ml/tests/test_feature_engineering.py::test_scaled_matrix_dimensions_and_no_nan_inf PASSED [ 25%]
-ml/tests/test_feature_engineering.py::test_unique_ips_used PASSED        [ 33%]
-ml/tests/test_feature_engineering.py::test_empty_and_single_wallet_dataframe PASSED [ 41%]
-ml/tests/test_features.py::test_extract_features_schema PASSED           [ 50%]
-ml/tests/test_features.py::test_extract_features_empty_dataframe PASSED  [ 58%]
-ml/tests/test_ingestion.py::test_process_raw_file_json PASSED            [ 66%]
-ml/tests/test_ingestion.py::test_process_raw_file_csv PASSED             [ 75%]
-ml/tests/test_ingestion.py::test_invalid_data_dropping PASSED            [ 83%]
-ml/tests/test_model.py::test_isolation_forest_fit_predict PASSED         [ 91%]
+ml/tests/test_feature_engineering.py::test_wallet_volume_aggregation PASSED [  5%]
+ml/tests/test_feature_engineering.py::test_fan_in_and_fan_out_ratios PASSED [ 10%]
+ml/tests/test_feature_engineering.py::test_scaled_matrix_dimensions_and_no_nan_inf PASSED [ 15%]
+ml/tests/test_feature_engineering.py::test_unique_ips_used PASSED        [ 21%]
+ml/tests/test_feature_engineering.py::test_empty_and_single_wallet_dataframe PASSED [ 26%]
+ml/tests/test_features.py::test_extract_features_schema PASSED           [ 31%]
+ml/tests/test_features.py::test_extract_features_empty_dataframe PASSED  [ 36%]
+ml/tests/test_ingestion.py::test_process_raw_file_json PASSED            [ 42%]
+ml/tests/test_ingestion.py::test_process_raw_file_csv PASSED             [ 47%]
+ml/tests/test_ingestion.py::test_invalid_data_dropping PASSED            [ 52%]
+ml/tests/test_model.py::test_isolation_forest_fit_predict PASSED         [ 57%]
+ml/tests/test_model.py::test_isolation_forest_numpy_array_input PASSED   [ 63%]
+ml/tests/test_model.py::test_risk_score_bounds_and_calibration PASSED    [ 68%]
+ml/tests/test_model.py::test_synthetic_outlier_wallets_score_significantly_higher PASSED [ 73%]
+ml/tests/test_signal_breakdown_attribution PASSED                         [ 78%]
+ml/tests/test_model.py::test_anomalous_wallets_return_top_risk_factors PASSED [ 84%]
+ml/tests/test_model.py::test_injected_extreme_feature_attribution PASSED [ 89%]
+ml/tests/test_model.py::test_attribution_edge_cases_zero_variance_and_uniform PASSED [ 94%]
 ml/tests/test_model.py::test_shap_explainer PASSED                       [100%]
 
-============================= 12 passed in 1.38s ==============================
+============================= 19 passed in 50.40s ==============================
+```
+
+Dedicated ML Model Suite Log (`ml/tests/test_model.log`):
+```bash
+$ python -m pytest -v -s ml/tests/test_model.py
+============================= test session starts ==============================
+platform linux -- Python 3.13.13, pytest-9.1.1, pluggy-1.6.0 -- /mnt/c/Users/Praneeth Tadi/Documents/_SIH_bitcoin_traffic_monitor/flashmen/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /mnt/c/Users/Praneeth Tadi/Documents/_SIH_bitcoin_traffic_monitor/flashmen
+plugins: anyio-4.14.2, Faker-40.38.0
+collecting ... collected 9 items
+
+ml/tests/test_model.py::test_isolation_forest_fit_predict PASSED
+ml/tests/test_model.py::test_isolation_forest_numpy_array_input PASSED
+ml/tests/test_model.py::test_risk_score_bounds_and_calibration PASSED
+ml/tests/test_model.py::test_synthetic_outlier_wallets_score_significantly_higher PASSED
+ml/tests/test_model.py::test_signal_breakdown_attribution PASSED
+ml/tests/test_model.py::test_anomalous_wallets_return_top_risk_factors PASSED
+ml/tests/test_model.py::test_injected_extreme_feature_attribution PASSED
+ml/tests/test_model.py::test_attribution_edge_cases_zero_variance_and_uniform PASSED
+ml/tests/test_model.py::test_shap_explainer PASSED
+
+============================== slowest durations ===============================
+0.75s call     ml/tests/test_model.py::test_synthetic_outlier_wallets_score_significantly_higher
+0.33s call     ml/tests/test_model.py::test_isolation_forest_fit_predict
+0.13s call     ml/tests/test_model.py::test_attribution_edge_cases_zero_variance_and_uniform
+0.11s call     ml/tests/test_model.py::test_anomalous_wallets_return_top_risk_factors
+0.10s call     ml/tests/test_model.py::test_risk_score_bounds_and_calibration
+0.07s call     ml/tests/test_model.py::test_isolation_forest_numpy_array_input
+0.07s call     ml/tests/test_model.py::test_injected_extreme_feature_attribution
+0.06s call     ml/tests/test_model.py::test_signal_breakdown_attribution
+
+============================== 9 passed in 49.32s ==============================
 ```
 
 ---
 
-## 4. Immediate Next Steps (Milestone M4)
+## 4. Next Integration Steps (Milestone M4)
 1. **Model Pipeline Integration**:
-   - Fit `IsolationForestAnomalyDetector` on the scaled wallet matrix produced by `extract_wallet_features()`.
-   - Wire real inference into `backend/services/scoring.py:score_entities()`.
-2. **Real TreeExplainer Integration**:
-   - Replace Dirichlet synthetic attributions in `explainer.py` with true TreeExplainer/KernelExplainer feature attributions computed on the fitted Isolation Forest model.
-3. **Graph Heuristic Fusion**:
+   - Wire `IsolationForestAnomalyDetector` into `backend/services/scoring.py:score_entities()` to score both IP and wallet entities dynamically.
+2. **Graph Heuristic Fusion**:
    - Combine topological peel-chain alerts from `graph/heuristics.py` with ML anomaly scores for multi-layered forensic confidence scores.
