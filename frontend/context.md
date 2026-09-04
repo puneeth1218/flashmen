@@ -1,84 +1,71 @@
 # Frontend Module Context & Implementation Status
 
 > **Module**: `frontend/`  
-> **Status**: Full SPA Scaffolding Complete · Component Suite Operational  
-> **Framework**: React 18 · TypeScript · Vite · Tailwind CSS · Cytoscape.js · Axios  
+> **Status**: Full SPA Scaffolding Complete · Aceternity Dark UI Implemented  
+> **Framework**: React 18 · TypeScript · Vite · Tailwind CSS · React Query · Axios
 
 ---
 
 ## 1. Module Overview & Role
-The `frontend/` module provides a responsive web application for intelligence analysts and investigators using the **Bitcoin Traffic Monitor (Flashmen)**. It visualizes:
-- Real-time forensic alerts with expandable SHAP explainability breakdowns.
-- Network telemetry metrics (transactions ingested, peer counts, risk distributions).
-- Interactive topological investigation graphs rendered via Cytoscape.js.
-- Offline data upload workflows for raw CSV/JSON transaction dumps.
+The `frontend/` module provides a highly-responsive, premium dark-mode web application for intelligence analysts using the **Bitcoin Traffic Monitor (Flashmen)**. The UI has been heavily refined to follow the **Aceternity UI / Maciej Zadykowicz** design system, focusing on:
+- High-contrast typography (pure white text on deep black canvases).
+- Minimalist geometric surfaces (`zinc-950` cards with 1px hairlines).
+- "Ghost pill" badges and pure-white primary CTA buttons.
+- Real-time forensic alerts and file ingestion drag-and-drop zones.
 
 ---
 
 ## 2. Directory Structure & File Contents
 
-```
+```text
 frontend/
-├── Dockerfile                # Multi-stage production container with Nginx 1.25 alpine
-├── nginx.conf                # Nginx reverse proxy routing /api requests to backend:8000
-├── package.json              # NPM manifest (React 18, Vite, Tailwind, Cytoscape, Lucide)
-├── tsconfig.json             # TypeScript strict configuration
-├── vite.config.ts            # Vite dev server setup (port 3000, /api proxy to localhost:8000)
-└── src/
-    ├── App.tsx               # Root component with React Router v6 navigation
-    ├── main.tsx              # Application bootstrap & DOM root mount
-    ├── index.css             # Tailwind directives and global typography styles
-    ├── services/
-    │   └── api.ts            # Strongly-typed Axios client mirroring all backend Pydantic models
-    ├── components/
-    │   ├── Navbar.tsx        # Top navigation with global entity search input & route links
-    │   ├── StatsSummary.tsx  # 4-card metric grid (Transactions, High Risk, Entities, Peers)
-    │   ├── AlertTable.tsx    # Sortable triage table with expandable SHAP feature attribution
-    │   └── GraphViewer.tsx   # Cytoscape.js canvas with COSE layout, node badges & legends
-    └── pages/
-        ├── DashboardPage.tsx # Route /: Telemetry metrics & interactive alert triage
-        ├── GraphPage.tsx     # Route /graph: Topological graph explorer with hop depth selector
-        └── UploadPage.tsx    # Route /upload: Drag-and-drop file ingestion interface
+├── tailwind.config.js        # Strict Aceternity Dark palette (paper, canvas, ink, hairline, electric-blue)
+├── src/
+│   ├── App.tsx               # Root component with React Router v6 & global dark canvas wrapper
+│   ├── index.css             # Tailwind base layer overriding global body to pure deep black (#000000)
+│   ├── services/
+│   │   └── api.ts            # Axios clients and React Query mutation endpoints
+│   ├── components/
+│   │   ├── Navbar.tsx        # Aceternity-style sticky frosted header (44px/60px, no heavy borders)
+│   │   ├── AlertTable.tsx    # High-contrast borderless table for triage
+│   │   ├── FileUpload.tsx    # Sleek drag-and-drop dropzone with white-pill CTA
+│   │   └── ui/               # Reusable primitive system
+│   │       ├── Card.tsx      # Core surface (rounded-12px, border-hairline, bg-paper)
+│   │       ├── Badge.tsx     # Apple/Aceternity ghost-pill badges for risk scores
+│   │       └── Skeleton.tsx  # Loading state indicators (animate-pulse)
+│   └── pages/
+│       ├── DashboardPage.tsx # Route /: Full-bleed transparent sections floating over global grid/dark canvas
+│       ├── GraphPage.tsx     # Route /graph: (Pending visual overhaul integration)
+│       └── UploadPage.tsx    # Route /upload: Aceternity dark ingestion UI
 ```
 
 ---
 
 ## 3. What Has Been Implemented By This Point
 
-### 3.1 Typed API Integration Layer (`src/services/api.ts`)
-- Configured Axios instance with dynamic `VITE_API_BASE_URL` resolution (defaults to `http://localhost:8000`).
-- Strict TypeScript interface contracts matching backend models:
-  - `AlertData`: Type, identifier, risk score, confidence, reason, and `shap_explanation` map.
-  - `PaginatedAlertResponse`: Paginated array with total counts.
-  - `DashboardStats`: Counter aggregates, histogram distributions, and country rankings.
-  - `CytoscapeGraphResponse`: Standard Cytoscape nodes and edges.
-  - `IngestResponse`: Upload acknowledgement and processed row metrics.
-  - `SearchResponse`: Polymorphic search query results.
-- Exported API operations: `fetchAlerts()`, `fetchDashboardStats()`, `fetchNetworkGraph()`, `uploadTrafficFile()`, and `globalSearch()`.
+### 3.1 Design System Pivot (Aceternity Dark Mode)
+- Completely overhauled the UI from the original muddy slate/amber to a pure high-contrast dark mode.
+- **Colors**: Defined semantic tokens `paper` (#09090b), `canvas` (#000000), `ink` (#ffffff), `hairline` (#27272a), and `electric-blue` (#ffffff).
+- **Typography**: Stripped out excessive monospace fonts; implemented crisp tracking (`tracking-apple-body`, `tracking-apple-heading`) using `Inter`.
+- **Components**: 
+  - `Card`: Flattened all drop-shadows, set 12px radii, added crisp 1px zinc-800 borders.
+  - `Badge`: Removed background fills, converted to lightweight "ghost pills" (`bg-transparent`, thin borders).
+  - `Button`: Standardized primary CTAs (like "Ingest Logs") to solid white pills with black text (`bg-white text-black rounded-full`).
 
-### 3.2 UI Components (`src/components/`)
-- **`Navbar.tsx`**:
-  - Global entity search bar triggering navigation to `/graph?focus={query}`.
-  - Navigation tabs with active route highlighting (Dashboard, Graph Explorer, Ingest Logs).
-- **`StatsSummary.tsx`**:
-  - Color-coded metric cards with Lucide icons (Total Transactions, High Risk Alerts, Monitored Entities, Active Peers).
-- **`AlertTable.tsx`**:
-  - Color-graded risk badges: High (≥75, Red), Medium (≥40, Amber), Low (<40, Green).
-  - Entity category chips (Purple = Wallet, Blue = IP).
-  - Expandable row accordion rendering granular SHAP feature attribution bars.
-- **`GraphViewer.tsx`**:
-  - Canvas integration using `cytoscape` and `react-cytoscapejs`.
-  - Visual distinction: IP nodes (green ellipses), Wallet nodes (purple rectangles), Transaction nodes (hexagons), and High Risk nodes (prominent red borders).
-  - Dynamic COSE physics layout with directed arrows and node selection inspector.
+### 3.2 Data Mutations & Ingestion (`src/components/FileUpload.tsx`)
+- Integrated `@tanstack/react-query` `useMutation` for robust file uploading.
+- Support for `.csv`, `.json`, and `.jsonl` PCAP/Telemetry dumps.
+- Sleek drag-and-drop handling with hover-state border transitions (`border-white/50`).
+- Success states returning inline alerts containing processed records and flagged entities.
 
-### 3.3 Application Pages (`src/pages/`)
-- **`DashboardPage.tsx`**: Orchestrates `StatsSummary` cards and the paginated `AlertTable`.
-- **`GraphPage.tsx`**: Graph investigation workspace with search query parameter binding and hop depth controls (1, 2, or 3 hops).
-- **`UploadPage.tsx`**: File ingestion interface with drag-and-drop support, format validation (`.csv`, `.json`), upload progress feedback, and error handling.
+### 3.3 Alert Triage (`src/components/AlertTable.tsx`)
+- Minimalist data presentation without heavy table cell boundaries.
+- Rows highlight faintly on hover (`hover:bg-canvas`).
+- Inline risk badges calculate dynamic text/border colors based on standard numeric thresholds (e.g. `risk_score > 90`).
 
 ---
 
 ## 4. Immediate Next Steps
-1. Add live polling or WebSocket listener on `DashboardPage.tsx` to refresh telemetry as new files are uploaded.
-2. Implement node click callbacks in `GraphViewer.tsx` to display lateral entity inspection drawers.
-3. Add client-side CSV export for filtered alert lists in `AlertTable.tsx`.
+1. **Graph UI Alignment**: Ensure the Cytoscape graph canvas in `GraphPage.tsx` integrates smoothly with the new deep black `#000000` canvas (adjust node colors to pop against pure black).
+2. **WebSockets**: Introduce live-polling or true WebSocket connections to automatically append alerts to the `AlertTable` without requiring an explicit React Query invalidation trigger.
+3. **Expandable Rows**: Wire up the "Details `>`" button in the `AlertTable` to slide down or open a sheet displaying SHAP explainability matrices for the anomaly.
