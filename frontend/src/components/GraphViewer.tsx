@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
-import cytoscape, { Core, NodeSingular, StylesheetCSS } from 'cytoscape';
+import cytoscape, { Core, NodeSingular } from 'cytoscape';
 import CytoscapeComponent from 'react-cytoscapejs';
 import { Search, RotateCcw } from 'lucide-react';
 import { CytoscapeGraphResponse } from '../services/api';
@@ -68,6 +68,7 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({ graphData }) => {
     e.preventDefault();
     const cy = cyRef.current;
     if (!cy || !query.trim()) return;
+    
     const match = cy
       .nodes()
       .filter(
@@ -76,7 +77,9 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({ graphData }) => {
           (n.data('id') || '').toLowerCase().includes(query.toLowerCase())
       )
       .first();
-    if (match && match.length) focusNode(match);
+    if (match && match.length && match.isNode()) {
+      focusNode(match);
+    }
   };
 
   if (!graphData) {
@@ -106,7 +109,7 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({ graphData }) => {
     })),
   ];
 
-  const stylesheet: StylesheetCSS[] = [
+  const stylesheet = [
     {
       selector: 'node',
       style: {
