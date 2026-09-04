@@ -2,7 +2,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import cytoscape, { Core, NodeSingular } from 'cytoscape';
 import CytoscapeComponent from 'react-cytoscapejs';
 import { Search, RotateCcw } from 'lucide-react';
-import { CytoscapeGraphResponse } from '../services/api';
+import { CytoscapeGraphResponse, fetchAlerts, AlertData } from '../../services/api';
 
 interface GraphViewerProps {
   graphData: CytoscapeGraphResponse | null;
@@ -25,6 +25,8 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({ graphData }) => {
   const [selected, setSelected] = useState<any>(null);
   const [query, setQuery] = useState('');
   const [layoutName, setLayoutName] = useState<keyof typeof LAYOUTS>('cose');
+  const [alertDetail, setAlertDetail] = useState<AlertData | null>(null);
+  const [loadingAlert, setLoadingAlert] = useState(false);
 
   const focusNode = useCallback((node: NodeSingular) => {
     const cy = cyRef.current;
@@ -34,6 +36,22 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({ graphData }) => {
     neighborhood.removeClass('dimmed').addClass('highlighted');
     cy.animate({ center: { eles: node }, zoom: 1.4 }, { duration: 350 });
     setSelected(node.data());
+
+    // Look up this entity's SHAP explanation from the alerts endpoint
+    const entityId = node.data('id');
+    setLoadingAlert(true);
+    setAlertDetail(null);
+    fetchAlerts(1, 100)
+      .then((res) => {
+        const match = res.alerts.find((a) => a.entity_id === entityId);
+        setAlertDetail(match ?? null);
+      })
+      .catch((err) => {
+        console.error('Failed to fetch alert detail:', err);
+      })
+      .finally(() => {
+        setLoadingAlert(false);
+      });
   }, []);
 
   const clearFocus = useCallback(() => {
@@ -41,6 +59,7 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({ graphData }) => {
     if (!cy) return;
     cy.elements().removeClass('dimmed').removeClass('highlighted');
     setSelected(null);
+    setAlertDetail(null);
   }, []);
 
   const handleCyInit = useCallback(
@@ -68,7 +87,7 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({ graphData }) => {
     e.preventDefault();
     const cy = cyRef.current;
     if (!cy || !query.trim()) return;
-    
+
     const match = cy
       .nodes()
       .filter(
@@ -237,8 +256,29 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({ graphData }) => {
                 {selected.risk ?? '—'}
               </b>
             </div>
-            <div className="text-[11px] text-gray-500 italic border-t border-gray-700 pt-2">
-              SHAP evidence will render here once wired to the alert detail endpoint.
+            <div className="text-[11px] text-gray-400 border-t border-gray-700 pt-2">
+              {loadingAlert ? (
+                <span className="italic text-gray-500">Loading explanation…</span>
+              ) : alertDetail ? (
+                <>
+                  <div className="mb-1">{alertDetail.reason}</div>
+                  {Object.keys(alertDetail.shap_explanation ?? {}).length > 0 && (
+                    <ul className="mt-1 space-y-0.5">
+                      {Object.entries(alertDetail.shap_explanation)
+                        .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+                        .slice(0, 3)
+                        .map(([feature, contribution]) => (
+                          <li key={feature}>
+                            {feature}: {contribution > 0 ? '+' : ''}
+                            {contribution.toFixed(1)}
+                          </li>
+                        ))}
+                    </ul>
+                  )}
+                </>
+              ) : (
+                <span className="italic text-gray-500">No alert record found for this entity.</span>
+              )}
             </div>
           </div>
         )}
