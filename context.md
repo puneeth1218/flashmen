@@ -19,7 +19,7 @@ The objective is to enable cyber intelligence, forensic investigators, and netwo
 - Provide explainable triage (feature attributions, investigative reason tags) and interactive topological graph analysis (Cytoscape.js) to trace threat actors.
 
 ### 1.2 Core Operational Constraints
-- **Air-Gapped & Offline Execution**: The entire pipeline operates in disconnected environments. GeoIP lookups utilize local MaxMind `.mmdb` databases (`data/geolite2/GeoLite2-City.mmdb`) with graceful fallback to `"UNKNOWN"`. All Python/Node dependencies are locally packaged.
+- **Air-Gapped & Offline Execution**: The entire pipeline operates in disconnected environments. GeoIP lookups utilize local MaxMind `.mmdb` databases (`data/geolite2/GeoLite2-City.mmdb`) with graceful fallback to `"UNKNOWN"`. All Python/Node dependencies are strictly pinned to exact versions in `requirements.txt` and `package.json` to guarantee reproducible behavior. Dependencies are locally packaged via `download_offline_packages.sh` / `.ps1` into `offline_packages/` prior to offline Docker execution.
 - **Strict Non-Destructive Module Boundaries**: Parallel development requires isolating changes strictly to data ingestion (`backend/services/ingestion.py`) and machine learning (`ml/`), preserving existing contracts and avoiding touching `backend/routes/`, `frontend/`, or `graph/`.
 - **Determinism & Performance**: Zero telemetry leaks, deterministic validation with Pydantic v2 schemas, vector-accelerated feature transforms in pandas/numpy, and lightweight ML scoring with low latency.
 
@@ -39,6 +39,8 @@ flashmen/
 ├── data/
 │   ├── geolite2/             # MaxMind offline GeoIP binary (GeoLite2-City.mmdb)
 │   └── synthetic/            # Synthetic sample files for testing
+├── offline_packages/         # Local cache for pip wheels and npm dependencies
+├── download_offline_packages.sh/.ps1 # DevOps scripts to populate offline cache
 ├── frontend/                 # React 18 SPA (Vite + TypeScript + Tailwind + Cytoscape.js)
 ├── graph/                    # NetworkX graph construction & heuristic pattern matchers
 │   ├── builder.py            # Directed multigraph construction for Cytoscape.js

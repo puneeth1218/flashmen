@@ -7,6 +7,15 @@ to provide explainability, forensic reason codes, and investigative tags for fla
 import logging
 from typing import Dict, Any, List, Optional, Union, Tuple
 import numpy as np
+
+# Backward compatibility for NumPy 2.0+ with shap internals
+if not hasattr(np, "bool"):
+    np.bool = bool
+if not hasattr(np, "float"):
+    np.float = float
+if not hasattr(np, "int"):
+    np.int = int
+
 import pandas as pd
 import shap
 from sklearn.ensemble import IsolationForest

@@ -3,7 +3,8 @@ FROM python:3.10-slim
 WORKDIR /app
 
 COPY requirements.txt ./backend/requirements.txt
-RUN pip install --no-cache-dir -r backend/requirements.txt
+COPY offline_packages/python ./offline_packages/python
+RUN pip install --no-index --find-links=./offline_packages/python -r backend/requirements.txt
 
 COPY . ./backend
 
