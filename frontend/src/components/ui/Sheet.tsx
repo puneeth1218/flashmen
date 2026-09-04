@@ -26,26 +26,32 @@ export const Sheet: React.FC<SheetProps> = ({ isOpen, onClose, children, title }
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+    <div className="fixed inset-0 z-50 flex justify-end animate-in fade-in duration-200">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+        className="absolute inset-0 bg-black/75 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
       
-      {/* Sheet Content */}
-      <div className="relative w-full max-w-md h-full bg-zinc-950 border-l border-zinc-800 shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out">
-        <div className="flex items-center justify-between p-4 border-b border-zinc-800">
-          <h2 className="text-lg font-semibold text-zinc-50 tracking-tight">{title || 'Details'}</h2>
+      {/* Sheet Content Drawer */}
+      <div className="relative w-full max-w-lg h-full bg-zinc-950 border-l border-zinc-800/90 shadow-2xl flex flex-col z-10 animate-in slide-in-from-right duration-300 ease-out">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-zinc-800/80 bg-zinc-950/60 backdrop-blur-md">
+          <div className="flex items-center gap-2.5">
+            <div className="w-2 h-2 rounded-full bg-cyan-400"></div>
+            <h2 className="text-base font-bold text-white tracking-tight font-mono">
+              {title || 'Entity Inspection'}
+            </h2>
+          </div>
           <button 
             type="button"
             onClick={(e) => { e.stopPropagation(); onClose(); }}
-            className="relative z-50 p-1 rounded-sm opacity-70 hover:opacity-100 hover:bg-zinc-800 transition-opacity focus:outline-none focus:ring-2 focus:ring-zinc-400"
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800/80 transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-600 cursor-pointer"
+            aria-label="Close drawer"
           >
-            <X className="h-4 w-4 text-zinc-400 pointer-events-none" />
+            <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="p-4 flex-1 overflow-y-auto">
+        <div className="p-6 flex-1 overflow-y-auto space-y-6">
           {children}
         </div>
       </div>

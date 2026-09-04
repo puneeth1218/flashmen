@@ -26,13 +26,18 @@ export interface PaginatedAlertResponse {
 }
 
 export interface DashboardStats {
-  total_transactions_ingested: number;
-  total_entities_monitored: number;
-  high_risk_alerts_count: number;
-  medium_risk_alerts_count: number;
-  active_peers_count: number;
-  risk_score_distribution: Record<string, number>;
-  top_flagged_countries: Array<{ country: string; flagged_count: number }>;
+  total_transactions_ingested?: number;
+  total_entities_monitored?: number;
+  high_risk_alerts_count?: number;
+  medium_risk_alerts_count?: number;
+  active_peers_count?: number;
+  critical_threat_entities?: number;
+  total_alerts?: number;
+  critical_alerts?: number;
+  anomalous_volume_btc?: number;
+  dominant_pattern?: string;
+  risk_score_distribution?: Record<string, number>;
+  top_flagged_countries?: Array<{ country: string; flagged_count: number }>;
 }
 
 export interface CytoscapeNode {

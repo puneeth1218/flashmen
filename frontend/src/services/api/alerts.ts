@@ -12,7 +12,12 @@ export interface AlertData {
 export interface DashboardStats {
   total_alerts?: number;
   critical_alerts?: number;
-  active_entities?: number;
+  critical_threat_entities?: number;
+  total_transactions_ingested?: number;
+  anomalous_volume_btc?: number;
+  dominant_pattern?: string;
+  latest_update?: string | null;
+  risk_score_distribution?: Record<string, number>;
   [key: string]: any;
 }
 
