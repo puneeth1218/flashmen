@@ -201,12 +201,11 @@ class ShapExplainer:
             for name, w in zip(names, weights)
         }
 
-        # Guard: ensure strict sum to 1.0 (adjust largest weight with residual)
-        curr_sum = round(sum(attribution.values()), 4)
-        residual = round(1.0 - curr_sum, 4)
-        if residual != 0 and names:
+        # Correct the rounding residual so the returned values sum exactly to 1.0.
+        if names:
             top_key = max(attribution, key=attribution.get)
-            attribution[top_key] = round(attribution[top_key] + residual, 4)
+            residual = 1.0 - sum(attribution.values())
+            attribution[top_key] += residual
 
         return attribution
 
