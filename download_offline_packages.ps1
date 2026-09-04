@@ -3,7 +3,7 @@ New-Item -ItemType Directory -Force -Path "offline_packages\python" | Out-Null
 New-Item -ItemType Directory -Force -Path "offline_packages\npm" | Out-Null
 
 Write-Host "Downloading Python dependencies..."
-python -m pip download -r backend\requirements.txt -d offline_packages\python
+docker run --rm -v "$PWD\backend:/backend" -v "$PWD\offline_packages\python:/offline_packages/python" python:3.10-slim pip download -r /backend/requirements.txt -d /offline_packages/python
 
 Write-Host "Populating npm cache..."
 Set-Location frontend

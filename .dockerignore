@@ -19,7 +19,7 @@ frontend/.vite
 
 # Local data and offline caches
 data/geolite2
-offline_packages
+# offline_packages
 *.db
 *.sqlite
 *.sqlite3
