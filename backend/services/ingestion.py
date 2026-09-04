@@ -1,101 +1,121 @@
-"""
-Raw Traffic & Transaction Data Ingestion Service (M2 to M1 Contract).
-"""
-
+import json
+import logging
 import os
+from typing import List, Optional, Dict, Any
 import pandas as pd
-from typing import List, Dict, Any
-from pydantic import BaseModel, ValidationError, ConfigDict
-from datetime import datetime
+from pydantic import BaseModel, Field, ValidationError
+import geoip2.database
+
+# Setup logger
+logger = logging.getLogger(__name__)
+
+# Global cache to optimize GeoIP lookups
+GEOIP_CACHE: Dict[str, Dict[str, str]] = {}
+
 
 class RawTransactionRow(BaseModel):
-    """
-    Pydantic v2 model to validate incoming data structures.
-    Requires strict casting of amounts to floats and parses timestamps.
-    """
-    timestamp: datetime
+    """Pydantic v2 Schema for validating incoming Bitcoin metadata rows."""
+    timestamp: str
     src_ip: str
     dst_ip: str
     src_port: int
     dst_port: int
     txid: str
-    input_addresses: str
-    output_addresses: str
-    input_amounts: float
-    output_amounts: float
+    input_addresses: List[str]
+    output_addresses: List[str]
+    input_amounts: List[float]
+    output_amounts: List[float]
+    fee: Optional[float] = 0.0
+    script_type: Optional[str] = "p2pkh"
+
+
+def get_ip_metadata(ip_address: str, reader: Optional[geoip2.database.Reader]) -> Dict[str, str]:
+    """Helper to look up IP country via MaxMind with local caching."""
+    if ip_address in GEOIP_CACHE:
+        return GEOIP_CACHE[ip_address]
+
+    result = {"country": "UNKNOWN"}
     
-    # Ignore any additional unexpected columns from the raw file
-    model_config = ConfigDict(extra="ignore")
+    if reader is not None:
+        try:
+            response = reader.city(ip_address)
+            if response.country and response.country.iso_code:
+                result["country"] = response.country.iso_code
+        except Exception:
+            # Private IPs, loopbacks, or unmapped IPs fall back gracefully
+            pass
+
+    GEOIP_CACHE[ip_address] = result
+    return result
 
 
 def process_raw_file(filepath: str) -> pd.DataFrame:
     """
-    Ingests and parses a raw CSV or JSON file containing Bitcoin network traffic logs.
-    Iterates in chunks of 10,000 to prevent memory exhaustion and safely drops
-    malformed rows that fail Pydantic validation.
-
-    Args:
-        filepath (str): Path to the uploaded raw data file (CSV or JSON).
-
-    Returns:
-        pd.DataFrame: Cleaned DataFrame containing validated rows.
+    Parses CSV/JSON raw transaction data, validates schema using Pydantic,
+    enriches with offline GeoIP metadata, and returns a clean pandas DataFrame.
     """
-    if not os.path.exists(filepath):
-        raise FileNotFoundError(f"Raw data file not found at path: {filepath}")
-
-    ext = os.path.splitext(filepath)[-1].lower()
-    chunksize = 10000
-    valid_records: List[Dict[str, Any]] = []
-
-    def process_chunk(chunk: pd.DataFrame):
-        records = chunk.to_dict(orient="records")
-        for record in records:
-            try:
-                # 1. Pydantic validation and coercion
-                validated = RawTransactionRow(**record)
-                row_dict = validated.model_dump()
-                
-                # 2. Hardcode src_country and dst_country as 'unknown' per requirements
-                row_dict["src_country"] = "unknown"
-                row_dict["dst_country"] = "unknown"
-                
-                # Keep asn defaults if missing from raw data but required by downstream
-                row_dict["src_asn"] = record.get("src_asn", "AS0")
-                row_dict["dst_asn"] = record.get("dst_asn", "AS0")
-                
-                valid_records.append(row_dict)
-            except ValidationError:
-                # 3. Silently quarantine/drop malformed rows
-                continue
-
-    if ext == ".csv":
-        for chunk in pd.read_csv(filepath, chunksize=chunksize):
-            process_chunk(chunk)
-    elif ext in [".json", ".jsonl"]:
-        if ext == ".jsonl":
-            for chunk in pd.read_json(filepath, lines=True, chunksize=chunksize):
-                process_chunk(chunk)
-        else:
-            # Standard JSON array, read entirely then manually chunk
-            df = pd.read_json(filepath)
-            for i in range(0, len(df), chunksize):
-                process_chunk(df.iloc[i:i+chunksize])
+    # 1. Load Data
+    if filepath.endswith('.csv'):
+        df_raw = pd.read_csv(filepath)
+        # Parse stringified list columns if loading from CSV
+        for col in ['input_addresses', 'output_addresses', 'input_amounts', 'output_amounts']:
+            if col in df_raw.columns:
+                df_raw[col] = df_raw[col].apply(
+                    lambda x: json.loads(x) if isinstance(x, str) else (x if isinstance(x, list) else [])
+                )
+        df_raw = df_raw.where(pd.notnull(df_raw), None)
+        records = df_raw.to_dict(orient='records')
+        # Ensure optional defaults are applied when None
+        for r in records:
+            if r.get('fee') is None:
+                r['fee'] = 0.0
+            if r.get('script_type') is None:
+                r['script_type'] = "p2pkh"
+    elif filepath.endswith('.json'):
+        with open(filepath, 'r', encoding='utf-8') as f:
+            records = json.load(f)
+            if not isinstance(records, list):
+                raise ValueError("JSON file must contain a top-level array of objects.")
     else:
-        raise ValueError(f"Unsupported file format: '{ext}'. Must be CSV or JSON.")
-    
-    # 4. Concatenate the valid chunks and return the final DataFrame
-    if not valid_records:
-        # Return an empty DataFrame with the expected columns if everything failed
-        final_df = pd.DataFrame(columns=[
-            "timestamp", "src_ip", "dst_ip", "src_port", "dst_port", "txid",
-            "input_addresses", "output_addresses", "input_amounts", "output_amounts",
-            "src_asn", "src_country", "dst_asn", "dst_country"
-        ])
-    else:
-        final_df = pd.DataFrame(valid_records)
-        
-    # Final guarantee that timestamps are proper pandas datetime objects localized to UTC
-    if not final_df.empty:
-        final_df["timestamp"] = pd.to_datetime(final_df["timestamp"], utc=True)
-        
-    return final_df
+        raise ValueError("Unsupported file format. File must be .csv or .json")
+
+    # 2. Validate Rows via Pydantic
+    validated_records = []
+    for idx, record in enumerate(records):
+        try:
+            validated_row = RawTransactionRow(**record)
+            validated_records.append(validated_row.model_dump())
+        except ValidationError as e:
+            logger.warning(f"Row {idx} dropped due to schema validation failure: {e}")
+
+    if not validated_records:
+        raise ValueError("No valid records found after Pydantic schema validation.")
+
+    df = pd.DataFrame(validated_records)
+
+    # 3. Standardize Timestamp to UTC
+    df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
+
+    # 4. Perform GeoIP Enrichment
+    possible_paths = [
+        "data/geolite2/GeoLite2-City.mmdb",
+        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data", "geolite2", "GeoLite2-City.mmdb"),
+        "GeoLite2-City.mmdb",
+        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "GeoLite2-City.mmdb"),
+    ]
+    geolite_path = next((p for p in possible_paths if os.path.isfile(p)), None)
+    reader = None
+    if geolite_path:
+        try:
+            reader = geoip2.database.Reader(geolite_path)
+        except Exception as e:
+            logger.info(f"Failed to open GeoLite2 database at {geolite_path}: {e}")
+
+    try:
+        df['src_country'] = df['src_ip'].apply(lambda ip: get_ip_metadata(ip, reader)['country'])
+        df['dst_country'] = df['dst_ip'].apply(lambda ip: get_ip_metadata(ip, reader)['country'])
+    finally:
+        if reader is not None:
+            reader.close()
+
+    return df
