@@ -1,0 +1,19 @@
+Collecting httpx
+  Using cached httpx-0.28.1-py3-none-any.whl.metadata (7.1 kB)
+Collecting anyio (from httpx)
+  File was already downloaded /mnt/c/Users/Praneeth Tadi/Documents/_SIH_bitcoin_traffic_monitor/flashmen/offline_packages/python/anyio-4.15.0-py3-none-any.whl
+Collecting certifi (from httpx)
+  File was already downloaded /mnt/c/Users/Praneeth Tadi/Documents/_SIH_bitcoin_traffic_monitor/flashmen/offline_packages/python/certifi-2026.7.22-py3-none-any.whl
+Collecting httpcore==1.* (from httpx)
+  Using cached httpcore-1.0.9-py3-none-any.whl.metadata (21 kB)
+Collecting idna (from httpx)
+  File was already downloaded /mnt/c/Users/Praneeth Tadi/Documents/_SIH_bitcoin_traffic_monitor/flashmen/offline_packages/python/idna-3.19-py3-none-any.whl
+Collecting h11>=0.16 (from httpcore==1.*->httpx)
+  File was already downloaded /mnt/c/Users/Praneeth Tadi/Documents/_SIH_bitcoin_traffic_monitor/flashmen/offline_packages/python/h11-0.16.0-py3-none-any.whl
+Collecting typing_extensions>=4.16.0 (from anyio->httpx)
+  File was already downloaded /mnt/c/Users/Praneeth Tadi/Documents/_SIH_bitcoin_traffic_monitor/flashmen/offline_packages/python/typing_extensions-4.16.0-py3-none-any.whl
+Using cached httpx-0.28.1-py3-none-any.whl (73 kB)
+Using cached httpcore-1.0.9-py3-none-any.whl (78 kB)
+Saved ./offline_packages/python/httpx-0.28.1-py3-none-any.whl
+Saved ./offline_packages/python/httpcore-1.0.9-py3-none-any.whl
+Successfully downloaded httpx httpcore anyio idna certifi h11 typing_extensions
