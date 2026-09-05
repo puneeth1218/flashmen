@@ -1,4 +1,4 @@
-# Bitcoin Traffic Monitor (`bitcoin-traffic-monitor`)
+# Flashmen (Bitcoin Traffic Monitor)
 
 A production-ready monorepo for real-time Bitcoin network traffic analysis, anomaly detection, explainable AI, and interactive graph visualization. Built under Smart India Hackathon (SIH) Problem Statement 26146 (NTRO).
 
@@ -53,9 +53,9 @@ flashmen/
     └── src/
         ├── App.tsx                 # Root layout & routing configuration
         ├── components/             # Reusable UI components
-        │   ├── Navbar.tsx          # Frosted header with global search (⌘K) & live health indicator
+        │   ├── Navbar.tsx          # Aceternity dark header with global search (⌘K) & live health indicator
         │   ├── AlertTable.tsx      # High-contrast triage table with SHAP inspection drawer
-        │   ├── FileUpload.tsx      # Drag-and-drop CSV/JSON ingestion zone
+        │   ├── FileUpload.tsx      # Drag-and-drop CSV/JSON ingestion zone (Route: /upload)
         │   ├── StatsSummary.tsx    # Telemetry metrics grid (Transactions, Volume, Peers)
         │   ├── RiskDistributionChart.tsx # SVG risk score distribution histogram
         │   └── graph/              # Cytoscape Graph components (GraphViewer, NodeDetailPanel)
