@@ -349,7 +349,7 @@ class IsolationForestAnomalyDetector:
         details = [f"{tag} ({weight * 100:.1f}%)" for _, tag, weight in factors if weight > 0]
         if not details:
             return "Normal network activity consistent with baseline."
-        return "Flagged due to: " + ", ".join(details)
+        return ", ".join(details)
 
     def get_feature_attributions(
         self,

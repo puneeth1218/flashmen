@@ -26,13 +26,18 @@ export interface PaginatedAlertResponse {
 }
 
 export interface DashboardStats {
-  total_transactions_ingested: number;
-  total_entities_monitored: number;
-  high_risk_alerts_count: number;
-  medium_risk_alerts_count: number;
-  active_peers_count: number;
-  risk_score_distribution: Record<string, number>;
-  top_flagged_countries: Array<{ country: string; flagged_count: number }>;
+  total_transactions_ingested?: number;
+  total_entities_monitored?: number;
+  high_risk_alerts_count?: number;
+  medium_risk_alerts_count?: number;
+  active_peers_count?: number;
+  critical_threat_entities?: number;
+  total_alerts?: number;
+  critical_alerts?: number;
+  anomalous_volume_btc?: number;
+  dominant_pattern?: string;
+  risk_score_distribution?: Record<string, number>;
+  top_flagged_countries?: Array<{ country: string; flagged_count: number }>;
 }
 
 export interface CytoscapeNode {
@@ -41,6 +46,7 @@ export interface CytoscapeNode {
     label: string;
     type: string;
     risk_score?: number;
+    pattern_tag?: string;
   };
 }
 
@@ -86,15 +92,20 @@ export const fetchAlerts = async (
   limit = 10,
   minScore = 0.0,
   entityType?: string
-): Promise<PaginatedAlertResponse> => {
-  const response = await apiClient.get<PaginatedAlertResponse>('/api/v1/alerts', {
-    params: { page, limit, min_score: minScore, entity_type: entityType },
+): Promise<AlertData[]> => {
+  const response = await apiClient.get<AlertData[]>('/api/v1/alerts', {
+    params: { skip: (page - 1) * limit, limit, min_score: minScore, entity_type: entityType },
   });
   return response.data;
 };
 
 export const fetchDashboardStats = async (): Promise<DashboardStats> => {
   const response = await apiClient.get<DashboardStats>('/api/v1/dashboard/stats');
+  return response.data;
+};
+
+export const clearAlerts = async (): Promise<{ status: string; message: string; cleared_count: number }> => {
+  const response = await apiClient.post('/api/v1/alerts/clear');
   return response.data;
 };
 

@@ -6,11 +6,39 @@
 
 @layer base {
   body {
-    background-color: theme('colors.canvas');
-    color: theme('colors.ink');
+    background-color: #07090e;
+    color: #f8fafc;
     margin: 0;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     @apply font-sans;
+    background-image: 
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(6, 182, 212, 0.08), transparent),
+      linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.4));
+  }
+}
+
+/* Cyber Command Center Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #090d16;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+@keyframes border-flow {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
   }
 }

@@ -27,7 +27,8 @@ export default function NodeDetailPanel({
     fetchAlerts(1, 100)
       .then((res) => {
         if (cancelled) return;
-        const match = res.alerts.find((a) => a.entity_id === nodeId);
+        const alertsList = Array.isArray(res) ? res : ((res as any)?.alerts || []);
+        const match = alertsList.find((a: AlertData) => a.entity_id === nodeId);
         setAlert(match ?? null);
       })
       .catch((err) => {

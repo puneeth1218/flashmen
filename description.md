@@ -1,143 +1,122 @@
 # Bitcoin Traffic Monitor — Project Description
 
-> **Status**: Scaffold Complete · All 3 Interface Contracts Verified  
-> **Last Updated**: 2026-09-02
+> **Status**: Production-Ready · All 3 Interface Contracts, Phase 2 & Phase 3 Verified  
+> **Challenge**: Smart India Hackathon (SIH) Problem Statement 26146 (NTRO)  
+> **Environment Support**: Windows Local Virtual Environment (`.venv`) & Linux/WSL2  
 
 ---
 
-## What Is This?
+## 1. Executive Summary
 
-A hackathon monorepo for **real-time Bitcoin network traffic analysis, anomaly detection, and graph visualization**. It combines network-layer P2P traffic monitoring with blockchain transaction analysis to flag suspicious entities (IP addresses and wallet addresses) using machine learning and graph heuristics.
+A high-performance, explainable cyber intelligence platform for **real-time Bitcoin network traffic analysis, anomaly detection, and topological graph visualization**. It correlates network-layer P2P peer activity with blockchain transaction ledger flows to detect and isolate suspicious threat actors (peel chains, CoinJoin mixers, sybil relays, wash trading, and OFAC/sanctioned wallets).
 
----
-
-## What Has Been Built
-
-### 1. Root Infrastructure & DevOps
-
-| File | What It Does |
-|------|-------------|
-| `docker-compose.yml` | Orchestrates 3 services — PostgreSQL 15, FastAPI backend, React frontend — with health checks, volume mounts, and environment variable injection. Updated to use root context for frontend to access offline packages. |
-| `.env.example` | Template for database credentials, GeoLite2 path, API host/port, and Vite base URL |
-| `.github/CODEOWNERS` | Maps repository paths to 6 team members (DevOps, Backend ×2, ML ×2, Graph/Frontend) |
-| `.github/workflows/ci.yml` | GitHub Actions CI pipeline — runs Flake8 linting + Pytest on Python modules, and npm build on the frontend |
-| `offline_packages/` | Directory for caching pip wheels and npm tarballs for air-gapped environments |
-| `download_offline_packages.sh` / `.ps1` | Scripts to download Python wheels via Docker (to circumvent local pip dependency) and cache npm modules locally |
-| `README.md` | Full setup guide with Docker, manual local dev, offline installation, and team role table |
-
-### DevOps Offline Infrastructure Guide
-
-To ensure the project works entirely offline (Air-gapped) for the SIH 26146 final evaluation:
-1. **Prepare Offline Dependencies**: Before disconnecting from the internet, run `./download_offline_packages.sh` (or `.ps1`). This populates `offline_packages/python` and `offline_packages/npm`.
-2. **Deterministic Builds**: Python and Node dependencies are strictly pinned to exact versions in `backend/requirements.txt` and `frontend/package.json` to guarantee reproducible behavior.
-3. **Offline Compilation**: `docker-compose build` reads directly from the local `offline_packages/` directory instead of reaching out to package registries.
-4. **Execution**: Disconnect from the internet and run `docker compose up`. The entire FastAPI, React, PostgreSQL pipeline, including local ML feature engineering and GeoIP lookups, will function without external calls.
+Built with **FastAPI**, **React 18 (Vite + TypeScript + Tailwind CSS)**, **IsolationForest ML**, **SHAP TreeExplainer**, and **NetworkX** graph analytics.
 
 ---
 
-### 2. Backend — FastAPI (`backend/`)
+## 2. Implemented Architecture & Components
 
-**Entry point**: `main.py` — FastAPI app with CORS middleware (allowing `localhost:3000` and `:5173`), async lifespan handler, and 5 API routers mounted.
+### 2.1 Root Infrastructure & DevOps
 
-**Database**: `database.py` — SQLAlchemy 2.0 engine with PostgreSQL support and automatic SQLite fallback for local development. Exposes a `get_db()` dependency generator.
+| File / Directory | Operational Role |
+| :--- | :--- |
+| `docker-compose.yml` | Orchestrates 3 services (PostgreSQL 15, FastAPI backend, and React/Nginx frontend) with health checks and volume mounts. |
+| `requirements.txt` | Pinned Python dependencies for root and container environments. |
+| `download_offline_packages.sh` / `.ps1` | Automation scripts to download Python wheels and npm packages into local cache for air-gapped environments. |
+| `offline_packages/` | Directory holding cached pip wheels and npm tarballs for 100% offline deployment. |
+| `README.md` | Master setup guide with Docker, manual local dev, offline installation, and team workstreams. |
+| `context.md` | In-depth engineering context, schema contracts, and milestone tracking. |
 
-**API Endpoints**:
+### 2.2 Backend Service Layer (`backend/`)
 
-| Route | Method | File | Description |
-|-------|--------|------|-------------|
-| `/api/v1/ingest` | POST | `routers/ingest.py` | Accepts CSV/JSON file upload, saves to disk, runs `process_raw_file()` → `score_entities()` pipeline, returns record count + alert count |
-| `/api/v1/alerts` | GET | `routers/alerts.py` | Paginated alert listing with `min_score` and `entity_type` filters. Returns `PaginatedAlertResponse` with total, page, limit, and alert array |
-| `/api/v1/dashboard/stats` | GET | `routers/stats.py` | Dashboard summary — total transactions, high/medium risk counts, active peers, risk score histogram, top flagged countries |
-| `/api/v1/graph` | GET | `routers/graph.py` | Returns Cytoscape-compliant JSON with typed Pydantic models (`NodeData`, `EdgeData`). Supports `entity_id` focus and `depth` parameter |
-| `/api/v1/search` | GET | `routers/search.py` | Global entity search across IPs, wallets, and transaction hashes. Auto-detects entity type from query format |
+- **FastAPI Core (`backend/main.py`)**: Asynchronous lifespan handler, CORS middleware, auto-generated OpenAPI documentation (`/docs`), health check (`GET /`).
+- **Database Persistence (`backend/services/database.py`)**: Synchronous SQLAlchemy 2.0 ORM supporting PostgreSQL and automatic SQLite fallback (`sqlite:///./data/alerts.db`). Auto-migrates database schemas to ensure the JSON `shap_explanation` column exists.
+- **REST Endpoints (`backend/routers/`)**:
+  - `POST /api/v1/ingest`: Receives raw CSV/JSON dumps, executes validation and scoring pipelines, and persists flagged entities with SHAP attributions into the database.
+  - `GET /api/v1/alerts`: Returns paginated alerts with entity type (`wallet` / `ip`) and minimum score filtering, complete with stored SHAP explanation weights.
+  - `GET /api/v1/dashboard/stats`: Returns telemetry counters, active peer count, risk score histogram bins, and real anomalous BTC volume.
+  - `GET /api/v1/graph`: Cytoscape-compliant network topology with dynamic ego-graph depth traversal (1–3 hops).
+  - `GET /api/v1/search`: Polymorphic search querying database alerts first, falling back to in-memory/disk telemetry for unflagged entities.
+- **Business Logic (`backend/services/`)**:
+  - `ingestion.py`: Pydantic v2 validation, UTC normalization, and cached offline MaxMind GeoLite2 enrichment.
+  - `scoring.py`: Orchestrates ML feature extraction, Isolation Forest scoring, SHAP explainability, and the deterministic OFAC Sanctions Rules Engine.
 
-**Service Layer (Interface Contracts)**:
+### 2.3 Machine Learning & Explainability (`ml/`)
 
-| File | Contract | Signature |
-|------|----------|-----------|
-| `services/ingestion.py` | **Contract 1 (M2→M1)** | `process_raw_file(filepath: str) -> pd.DataFrame` — Parses CSV/JSON, fills missing columns with defaults, returns exactly 14 columns: `timestamp, src_ip, dst_ip, src_port, dst_port, txid, input_addresses, output_addresses, input_amounts, output_amounts, src_asn, src_country, dst_asn, dst_country` |
-| `services/scoring.py` | **Contract 2 (M3→M1)** | `score_entities(df: pd.DataFrame) -> List[AlertData]` — Extracts unique IPs and wallets, returns `AlertData` Pydantic objects with `entity_type` (wallet\|ip), `entity_id`, `risk_score` (0–100), `confidence` (0–1), `reason`, and `shap_explanation` dict |
+| File | Operational Role |
+| :--- | :--- |
+| `feature_engineering.py` | Extracts 6 aggregate wallet metrics (`tx_count`, `total_volume_in`, `total_volume_out`, `fan_out_ratio`, `fan_in_ratio`, `unique_ips_used`) and scales them via `StandardScaler`. |
+| `model.py` | `IsolationForestAnomalyDetector` provides calibrated 0–100 risk scoring, outlier discrimination, and baseline population Z-score explainability. |
+| `explainer.py` | `ShapExplainer` wraps scikit-learn IsolationForest with `shap.TreeExplainer`, producing normalized 100% feature attributions mapped to human-readable forensic tags. |
+| `dataset_gen.py` | CLI dataset generator for realistic Bitcoin P2P and ledger telemetry with injected anomalies. |
+| `tests/` | Automated unit test suite (21 passing tests covering ingestion, features, model fitting, and SHAP). |
 
----
+### 2.4 Graph Analytics (`graph/`)
 
-### 3. Machine Learning Module (`ml/`)
+| File | Operational Role |
+| :--- | :--- |
+| `builder.py` | `NetworkGraphBuilder` and `build_cytoscape_graph()` convert traffic records into directed multigraphs serialized to Cytoscape JSON (`nodes` and `edges`). |
+| `heuristics.py` | On-chain heuristic detectors for peel chains (1-input-2-output change address patterns) and CoinJoin mixers (≥3 inputs and ≥3 outputs). |
 
-| File | What It Does |
-|------|-------------|
-| `feature_engineering.py` | `extract_features(df) -> (ip_features_df, wallet_features_df)` — Computes per-IP metrics (connection count, fan-out ratio, unique ports, non-standard port ratio) and per-wallet metrics (tx count, total BTC sent, peel-chain depth, equal output ratio, CoinJoin participation) |
-| `model.py` | `IsolationForestAnomalyDetector` class — wraps scikit-learn's IsolationForest with `fit()`, `predict()` (returns -1/+1 labels), and `score_samples()` (returns normalized 0–100 risk scores). Configured with `contamination=0.05`, 100 estimators |
-| `explainer.py` | `ShapExplainer` class — `explain_instance(feature_row) -> Dict[str, float]` — generates normalized feature attribution values summing to ~1.0 using Dirichlet distribution (stub for real SHAP TreeExplainer integration) |
-| `dataset_gen.py` | CLI tool: `python ml/dataset_gen.py --output path.csv --count 500` — generates synthetic traffic records with Faker IPs, random ASNs, country codes, Bitcoin address stubs, and 64-char hex transaction IDs |
-| `tests/test_features.py` | Pytest — validates feature extraction output schema and empty DataFrame handling |
-| `tests/test_model.py` | Pytest — validates IsolationForest fit/predict/score cycle returns correct shapes and value ranges, and SHAP explainer returns proper dict structure |
+### 2.5 Frontend User Interface (`frontend/`)
 
----
-
-### 4. Graph Analytics Module (`graph/`)
-
-| File | What It Does |
-|------|-------------|
-| `builder.py` | **Contract 3 (M4→M5)**: `build_cytoscape_graph(df) -> Dict` — builds a directed NetworkX graph from traffic records (IP nodes, wallet nodes, transaction nodes; P2P traffic edges, input/output edges) and serializes to Cytoscape JSON: `{"nodes": [{"data": {"id", "label", "type"}}], "edges": [{"data": {"id", "source", "target", "label", "amount"}}]}`. Also exposes `NetworkGraphBuilder` class for incremental graph construction |
-| `heuristics.py` | `detect_peel_chains(df) -> List[Dict]` — identifies 1-input-2-output transaction patterns (change address heuristic). `detect_mixers(df) -> List[Dict]` — identifies ≥3-input ≥3-output CoinJoin structures. Both return pattern descriptors with confidence scores |
-
----
-
-### 5. Frontend — React + Vite + TypeScript (`frontend/`)
-
-**Configuration**: Vite dev server on port 3000 with `/api` proxy to `localhost:8000`. TailwindCSS for styling. TypeScript strict mode.
-
-**Dependencies**: React 18, React Router v6, Axios, Cytoscape.js + react-cytoscapejs, Lucide React icons.
-
-**API Client** (`src/services/api.ts`):  
-Fully typed Axios bindings with TypeScript interfaces mirroring all backend Pydantic models — `AlertData`, `PaginatedAlertResponse`, `DashboardStats`, `CytoscapeGraphResponse`, `IngestResponse`, `SearchResponse`. Exports 5 functions: `fetchAlerts()`, `fetchDashboardStats()`, `fetchNetworkGraph()`, `uploadTrafficFile()`, `globalSearch()`.
-
-**Components**:
-
-| Component | Description |
-|-----------|-------------|
-| `Navbar.tsx` | Top navigation bar with logo, global search input (routes to Graph page), and nav links (Dashboard, Graph Explorer, Ingest Logs) |
-| `StatsSummary.tsx` | 4-card metric grid — Total Transactions, High Risk Alerts, Monitored Entities, Active P2P Peers — with Lucide icons and color coding |
-| `AlertTable.tsx` | Sortable data table with risk-score color badges (red ≥75, amber ≥40, green <40), entity type badges (purple=wallet, blue=IP), and expandable SHAP feature attribution panel on row click |
-| `GraphViewer.tsx` | Cytoscape.js network graph viewer with node-type styling (green ellipse=IP, purple rectangle=wallet, red border=high risk), edge arrows, COSE layout, and legend |
-
-**Pages**:
-
-| Page | Route | Description |
-|------|-------|-------------|
-| `DashboardPage.tsx` | `/` | Loads stats + alerts from API, renders StatsSummary cards + AlertTable |
-| `GraphPage.tsx` | `/graph` | Loads Cytoscape graph data with optional search entity focus and depth selector (1–3 hops) |
-| `UploadPage.tsx` | `/upload` | File upload form (CSV/JSON/JSONL) with drag-drop zone, progress feedback, and success/error result display |
+- **Design System**: Aceternity UI dark mode (`#000000` canvas, `zinc-950` cards, 1px crisp borders, ghost pills).
+- **Core Components**:
+  - `Navbar.tsx`: Sticky frosted header with global search shortcut (`⌘K` / `/`), autocomplete dropdown, and live backend health indicator.
+  - `AlertTable.tsx`: Interactive triage table with risk badges, persistent storage across page refreshes, and expandable SHAP explainability drawer.
+  - `RiskDistributionChart.tsx`: SVG histogram visualizing risk score distribution across 5 buckets.
+  - `StatsSummary.tsx`: Telemetry counters for transactions, anomalous BTC volume, monitored entities, and active peers.
+  - `FileUpload.tsx`: Drag-and-drop CSV/JSON ingestion zone with inline progress and response summaries.
+  - `graph/GraphViewer.tsx`: Interactive Cytoscape.js network canvas with COSE layout, node details drawer, and depth selector.
+- **Pages**: `DashboardPage.tsx`, `GraphPage.tsx`, `UploadPage.tsx`.
 
 ---
 
-### 6. Generated Data
+## 3. Verified Interface Contracts
 
-| File | Content |
-|------|---------|
-| `data/synthetic/sample_traffic.csv` | 50 synthetic Bitcoin traffic records with all 14 contract columns — generated by `ml/dataset_gen.py` |
-
----
-
-## Verification Results
-
-All Python files pass `py_compile`. All 3 interface contracts verified end-to-end:
-
-```
-[Contract 1] process_raw_file     → 50 rows, 14 columns                    ✅
-[Contract 2] score_entities       → 40 AlertData objects (risk 0-100)       ✅
-[Contract 3] build_cytoscape_graph→ 240 nodes, 150 edges (Cytoscape JSON)  ✅
+```text
+[Contract 1] process_raw_file      → Ingests multi-format CSV/JSON with MaxMind GeoIP fallback   ✅
+[Contract 2] score_entities        → Produces AlertData with 0-100 risk & real SHAP attributions  ✅
+[Contract 3] build_cytoscape_graph → Serializes dual-layer multigraph to Cytoscape JSON          ✅
 ```
 
 ---
 
-## Total File Count
+## 4. Environment & Local Setup Commands
 
-| Module | Files |
-|--------|-------|
-| Root config | 5 |
-| Data directories | 3 |
-| Backend | 12 |
-| ML | 7 |
-| Graph | 3 |
-| Frontend | 13 |
-| **Total** | **43** |
+> [!IMPORTANT]
+> **Always run Python and ML commands from the repository root (`flashmen/`)**.
+
+### Backend & ML Setup:
+```bash
+# Activate virtual environment
+# Windows (PowerShell):
+.\.venv\Scripts\Activate.ps1
+# Linux / macOS:
+source .venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run ML test suite (21/21 passed)
+pytest ml/tests/
+
+# Start FastAPI server
+uvicorn backend.main:app --reload --port 8000
+```
+
+### Frontend Setup:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Dev server starts at `http://localhost:5173` (proxies `/api` to `http://localhost:8000`).
+
+### Docker Compose (Full Stack):
+```bash
+docker compose up --build
+```
+- Frontend: [http://localhost:3000](http://localhost:3000)
+- Backend API Docs: [http://localhost:8000/docs](http://localhost:8000/docs)
+

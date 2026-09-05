@@ -1,0 +1,2 @@
+timestamp,src_ip,dst_ip,src_port,dst_port,txid,input_addresses,output_addresses,input_amounts,output_amounts,fee,script_type
+2026-03-31T12:00:00Z,8.8.8.8,1.1.1.1,8333,8333,tx_api_01,112345678,312345678,1.0,0.99,0.01,p2pkh

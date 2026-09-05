@@ -1,0 +1,1 @@
+{"timestamp": "2026-03-31T12:00:00Z", "src_ip": "8.8.8.8", "dst_ip": "1.1.1.1", "src_port": 8333, "dst_port": 8333, "txid": "tx_jsonl_01", "input_addresses": ["w_jsonl_1"], "output_addresses": ["w_jsonl_2"], "input_amounts": [3.0], "output_amounts": [2.95]}

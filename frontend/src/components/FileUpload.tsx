@@ -1,9 +1,16 @@
 import React, { useRef, useState, DragEvent } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { uploadTrafficFile } from '../services/api/ingest';
-import { Card, CardHeader, CardTitle, CardContent } from './ui/Card';
-import { Badge } from './ui/Badge';
-import { CheckCircle2, AlertCircle, FileText } from 'lucide-react';
+import { 
+  UploadCloud, 
+  CheckCircle2, 
+  AlertCircle, 
+  FileText, 
+  X, 
+  ArrowRight, 
+  Sparkles,
+  Database
+} from 'lucide-react';
 
 export const FileUpload: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -33,7 +40,7 @@ export const FileUpload: React.FC = () => {
       validExtensions.some(ext => selectedFile.name.toLowerCase().endsWith(ext));
 
     if (!isValidType) {
-      setLocalError('Invalid file type. Please upload a CSV or JSON file.');
+      setLocalError('Unsupported file format. Please select a valid .CSV, .JSON, or .JSONL telemetry log.');
       return;
     }
     setFile(selectedFile);
@@ -69,22 +76,60 @@ export const FileUpload: React.FC = () => {
     }
   };
 
+  const clearSelectedFile = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   return (
-    <Card className="w-full">
-      <CardHeader className="flex flex-row items-center justify-between pb-6">
-        <CardTitle className="text-[32px] text-ink font-semibold tracking-apple-subhead">
-          Ingest Telemetry
-        </CardTitle>
-        {mutation.isPending && <Badge variant="warning">Uploading...</Badge>}
-        {mutation.isSuccess && <Badge variant="success">Ingest Complete</Badge>}
-        {mutation.isError && <Badge variant="critical">Ingest Failed</Badge>}
-      </CardHeader>
-      <CardContent className="pt-8">
+    <div className="w-full bg-gradient-to-b from-zinc-900/90 via-zinc-950/90 to-zinc-950 p-6 md:p-8 rounded-3xl border border-zinc-800/80 shadow-2xl relative overflow-hidden backdrop-blur-md">
+      {/* Decorative Cyber Background Elements */}
+      <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
+      <div className="absolute bottom-0 left-0 w-80 h-80 bg-purple-500/5 rounded-full blur-3xl pointer-events-none -ml-20 -mb-20"></div>
+
+      {/* Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-zinc-800/80 relative z-10">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="text-xl md:text-2xl font-bold text-white tracking-tight flex items-center gap-2.5">
+              <Database className="w-5 h-5 text-cyan-400" />
+              Telemetry Ingestion Pipeline
+            </h3>
+          </div>
+          <p className="text-xs text-zinc-400">
+            Feed raw Bitcoin peer-to-peer traffic logs or transaction telemetry into the detection engine.
+          </p>
+        </div>
+
+        {/* Format Chips */}
+        <div className="flex items-center gap-2">
+          <span className="px-2.5 py-1 rounded-md text-[11px] font-mono font-medium bg-zinc-900 border border-zinc-800 text-zinc-300 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+            .CSV
+          </span>
+          <span className="px-2.5 py-1 rounded-md text-[11px] font-mono font-medium bg-zinc-900 border border-zinc-800 text-zinc-300 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+            .JSON
+          </span>
+          <span className="px-2.5 py-1 rounded-md text-[11px] font-mono font-medium bg-zinc-900 border border-zinc-800 text-zinc-300 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+            .JSONL
+          </span>
+        </div>
+      </div>
+
+      {/* Drag & Drop Target */}
+      <div className="pt-6 relative z-10">
         <div 
-          className={`rounded-apple-card p-12 text-center transition-colors cursor-pointer border relative z-10 ${
+          className={`rounded-2xl p-8 md:p-12 text-center transition-all cursor-pointer border-2 border-dashed relative overflow-hidden ${
             isDragging 
-              ? 'border-white bg-white/5' 
-              : 'border-hairline hover:border-mid-gray bg-transparent'
+              ? 'border-cyan-400 bg-cyan-950/20 shadow-cyber-glow' 
+              : file
+                ? 'border-zinc-700 bg-zinc-900/40 hover:border-zinc-600'
+                : 'border-zinc-800/90 hover:border-cyan-500/50 bg-zinc-950/40 hover:bg-zinc-900/20'
           }`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -98,50 +143,117 @@ export const FileUpload: React.FC = () => {
             onChange={handleFileChange}
             className="hidden"
           />
-          <FileText className="h-12 w-12 text-mid-gray mx-auto mb-4" strokeWidth={1.5} />
-          
+
           {file ? (
-            <div className="text-[14px] tracking-apple-body text-ink">
-              <span className="font-semibold">{file.name}</span>
-              <span className="text-mid-gray ml-2">({(file.size / 1024).toFixed(1)} KB)</span>
+            <div className="flex flex-col items-center justify-center space-y-3">
+              <div className="w-14 h-14 rounded-2xl bg-cyan-950/60 border border-cyan-800/60 flex items-center justify-center text-cyan-400 shadow-cyber-glow">
+                <FileText className="w-7 h-7" />
+              </div>
+              <div className="text-center">
+                <p className="text-base font-semibold text-white font-mono">{file.name}</p>
+                <p className="text-xs text-zinc-400 font-mono mt-0.5">
+                  {(file.size / 1024).toFixed(1)} KB · Ready to ingest
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={clearSelectedFile}
+                className="mt-2 text-xs text-zinc-400 hover:text-red-400 flex items-center gap-1 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 hover:border-red-500/40 transition-colors cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" /> Remove file
+              </button>
             </div>
           ) : (
-            <div>
-              <p className="text-ink text-[14px] font-medium tracking-apple-body">Click to select or drag and drop</p>
-              <p className="text-mid-gray text-[12px] tracking-apple-body mt-1">Supports .CSV, .JSON, .JSONL</p>
+            <div className="flex flex-col items-center justify-center space-y-3">
+              <div className="w-14 h-14 rounded-2xl bg-zinc-900/80 border border-zinc-800 flex items-center justify-center text-zinc-400 group-hover:text-cyan-400 transition-colors">
+                <UploadCloud className="w-7 h-7" />
+              </div>
+              <div>
+                <p className="text-base font-medium text-zinc-200">
+                  Select raw Bitcoin telemetry file or drag & drop here
+                </p>
+                <p className="text-xs text-zinc-400 mt-1">
+                  Supported formats: CSV, JSON array, or newline-delimited JSONL
+                </p>
+              </div>
             </div>
           )}
         </div>
-        
-        <div className="mt-8 flex justify-end relative z-10">
-          <button
-            onClick={handleUpload}
-            disabled={!file || mutation.isPending}
-            className="flex items-center gap-2 px-6 py-2.5 bg-white text-black text-[14px] font-bold tracking-apple-body rounded-apple-pill hover:opacity-90 disabled:bg-cool-wash disabled:text-mid-gray disabled:cursor-not-allowed transition-all"
-          >
-            {mutation.isPending ? 'Processing...' : 'Ingest Logs'}
-          </button>
-        </div>
-        
-        {(localError || mutation.isError) && (
-          <div className="mt-4 p-3 bg-red-950/30 border border-red-900/50 rounded-md text-sm text-red-400 flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            <p>{localError || 'Upload failed. Please check the backend connection.'}</p>
+
+        {/* Upload Progress Bar (during ingestion) */}
+        {mutation.isPending && (
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center justify-between text-xs text-cyan-400 font-mono">
+              <span className="flex items-center gap-2">
+                <Sparkles className="w-3.5 h-3.5 animate-spin" />
+                Extracting Graph Features & Running Dynamic Scoring...
+              </span>
+              <span>Processing</span>
+            </div>
+            <div className="w-full h-2 rounded-full bg-zinc-900 overflow-hidden border border-zinc-800">
+              <div className="h-full bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 animate-pulse rounded-full w-full"></div>
+            </div>
           </div>
         )}
-        
-        {mutation.isSuccess && mutation.data && (
-          <div className="mt-4 p-3 bg-green-950/30 border border-green-900/50 rounded-md text-sm text-green-400 flex items-start gap-2">
-            <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
+
+        {/* Actions Bar */}
+        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="text-xs text-zinc-400 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+            Ingestion engine ready · Real-time pipeline active
+          </div>
+
+          <button
+            type="button"
+            onClick={handleUpload}
+            disabled={!file || mutation.isPending}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-[13px] font-semibold tracking-wide shadow-cyber-glow disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none transition-all cursor-pointer"
+          >
+            {mutation.isPending ? (
+              <>
+                <Sparkles className="w-4 h-4 animate-spin" />
+                Processing Ingestion...
+              </>
+            ) : (
+              <>
+                Ingest & Analyze Telemetry
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Inline Error Notification */}
+        {(localError || mutation.isError) && (
+          <div className="mt-5 p-4 bg-red-950/30 border border-red-900/60 rounded-xl text-xs text-red-400 flex items-center gap-3">
+            <AlertCircle className="h-5 w-5 shrink-0 text-red-400" />
             <div>
-              <p className="font-semibold">Processed successfully</p>
-              <p className="text-green-500/80 mt-1 font-mono text-xs">
-                File: {mutation.data.filename} | Records: {mutation.data.processed_records} | Alerts: {mutation.data.generated_alerts_count}
+              <p className="font-semibold">Ingestion Error</p>
+              <p className="text-red-400/80 mt-0.5">
+                {localError || (mutation.error as any)?.response?.data?.detail || 'Failed to ingest file. Verify API connectivity.'}
               </p>
             </div>
           </div>
         )}
-      </CardContent>
-    </Card>
+
+        {/* Inline Success Alert Banner */}
+        {mutation.isSuccess && mutation.data && (
+          <div className="mt-5 p-4 bg-emerald-950/30 border border-emerald-800/60 rounded-xl text-xs text-emerald-300 flex items-start gap-3 shadow-emerald-glow">
+            <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-semibold text-emerald-200">
+                Telemetry Log Ingested & Scored Successfully
+              </p>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-mono text-emerald-400/90">
+                <span>File: <strong className="text-white">{mutation.data.filename}</strong></span>
+                <span>Records: <strong className="text-white">{mutation.data.processed_records}</strong></span>
+                <span>Flagged Entities: <strong className="text-white">{mutation.data.generated_alerts_count}</strong></span>
+                <span>Pipeline Status: <strong className="text-emerald-400">Score & Attribution Attached</strong></span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
