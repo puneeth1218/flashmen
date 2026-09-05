@@ -12,3 +12,4 @@ venv/
 # Local configuration
 .env
 audit_summary.txt
+codebase_audit.txt

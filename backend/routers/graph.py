@@ -20,6 +20,7 @@ class NodeData(BaseModel):
     label: str
     type: str  # 'wallet', 'ip', 'tx'
     risk_score: float = 0.0
+    pattern_tag: Optional[str] = ""
 
 
 class NodeItem(BaseModel):
@@ -66,7 +67,7 @@ async def get_network_graph(
     
     try:
         df = process_raw_file(latest_file)
-        graph_data = build_cytoscape_graph(df)
+        graph_data = build_cytoscape_graph(df, entity_id=entity_id, depth=depth)
         return CytoscapeGraphResponse(**graph_data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate graph: {str(e)}")

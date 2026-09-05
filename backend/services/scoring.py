@@ -11,10 +11,17 @@ import numpy as np
 import pandas as pd
 from pydantic import BaseModel, Field
 
-from ml.feature_engineering import extract_features, extract_wallet_features, WALLET_FEATURE_COLUMNS
+from ml.feature_engineering import extract_features, extract_wallet_features, WALLET_FEATURE_COLUMNS, _safe_parse_list
 from ml.model import IsolationForestAnomalyDetector, get_investigative_tag
 
 logger = logging.getLogger(__name__)
+
+# Known sanctioned entities (OFAC SDN list / Lazarus / test hashes)
+SANCTIONED_ENTITIES = {
+    "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+    "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
+    "194.26.29.112",
+}
 
 
 class AlertData(BaseModel):
@@ -67,6 +74,44 @@ def score_entities(df: pd.DataFrame) -> List[AlertData]:
     seen_entities: set = set()
 
     # =========================================================================
+    # 0. DETERMINISTIC RULES ENGINE (Sanctioned Entities)
+    # =========================================================================
+    for col in ["input_addresses", "output_addresses"]:
+        if col in df.columns:
+            for val in df[col]:
+                for addr in _safe_parse_list(val):
+                    clean_addr = _sanitize_entity_id(addr)
+                    if clean_addr in SANCTIONED_ENTITIES and clean_addr not in seen_entities:
+                        alerts.append(
+                            AlertData(
+                                entity_type="wallet",
+                                entity_id=clean_addr,
+                                risk_score=100.0,
+                                confidence=1.0,
+                                reason="Deterministic Rule Match: OFAC Sanctioned Entity",
+                                shap_explanation={"sanctioned_list_match": 1.0}
+                            )
+                        )
+                        seen_entities.add(clean_addr)
+
+    for col in ["src_ip", "dst_ip"]:
+        if col in df.columns:
+            for ip in df[col]:
+                clean_ip = _sanitize_entity_id(ip)
+                if clean_ip in SANCTIONED_ENTITIES and clean_ip not in seen_entities:
+                    alerts.append(
+                        AlertData(
+                            entity_type="ip",
+                            entity_id=clean_ip,
+                            risk_score=100.0,
+                            confidence=1.0,
+                            reason="Deterministic Rule Match: OFAC Sanctioned Entity",
+                            shap_explanation={"sanctioned_list_match": 1.0}
+                        )
+                    )
+                    seen_entities.add(clean_ip)
+
+    # =========================================================================
     # 1. WALLET ANOMALY DETECTION (IsolationForest on Wallet Feature Space)
     # =========================================================================
     try:
@@ -86,6 +131,20 @@ def score_entities(df: pd.DataFrame) -> List[AlertData]:
             for idx, (wallet_id, row) in enumerate(raw_wallet_df.iterrows()):
                 clean_wallet = _sanitize_entity_id(wallet_id)
                 if not clean_wallet or clean_wallet in seen_entities:
+                    continue
+
+                if clean_wallet in SANCTIONED_ENTITIES:
+                    alerts.append(
+                        AlertData(
+                            entity_type="wallet",
+                            entity_id=clean_wallet,
+                            risk_score=100.0,
+                            confidence=1.0,
+                            reason="Deterministic Rule Match: OFAC Sanctioned Entity",
+                            shap_explanation={"sanctioned_list_match": 1.0}
+                        )
+                    )
+                    seen_entities.add(clean_wallet)
                     continue
 
                 raw_score = float(scores[idx]) if idx < len(scores) else 50.0
@@ -145,6 +204,20 @@ def score_entities(df: pd.DataFrame) -> List[AlertData]:
                 for idx, row in ip_features_df.iterrows():
                     clean_ip = _sanitize_entity_id(row.get("entity_id"))
                     if not clean_ip or clean_ip == "UNKNOWN" or clean_ip in seen_entities:
+                        continue
+
+                    if clean_ip in SANCTIONED_ENTITIES:
+                        alerts.append(
+                            AlertData(
+                                entity_type="ip",
+                                entity_id=clean_ip,
+                                risk_score=100.0,
+                                confidence=1.0,
+                                reason="Deterministic Rule Match: OFAC Sanctioned Entity",
+                                shap_explanation={"sanctioned_list_match": 1.0}
+                            )
+                        )
+                        seen_entities.add(clean_ip)
                         continue
 
                     raw_score = float(ip_scores[idx]) if idx < len(ip_scores) else 50.0

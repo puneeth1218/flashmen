@@ -107,13 +107,15 @@ async def ingest_traffic_file(
                     existing.risk_score = alert_data.risk_score
                     existing.confidence = alert_data.confidence
                     existing.reason = clean_reason
+                    existing.shap_explanation = alert_data.shap_explanation
             else:
                 new_alert = Alert(
                     entity_type=alert_data.entity_type,
                     entity_id=alert_data.entity_id,
                     risk_score=alert_data.risk_score,
                     confidence=alert_data.confidence,
-                    reason=clean_reason
+                    reason=clean_reason,
+                    shap_explanation=alert_data.shap_explanation
                 )
                 db.add(new_alert)
                 existing_map[key] = new_alert

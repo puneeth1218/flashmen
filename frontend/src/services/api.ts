@@ -46,6 +46,7 @@ export interface CytoscapeNode {
     label: string;
     type: string;
     risk_score?: number;
+    pattern_tag?: string;
   };
 }
 
@@ -91,9 +92,9 @@ export const fetchAlerts = async (
   limit = 10,
   minScore = 0.0,
   entityType?: string
-): Promise<PaginatedAlertResponse> => {
-  const response = await apiClient.get<PaginatedAlertResponse>('/api/v1/alerts', {
-    params: { page, limit, min_score: minScore, entity_type: entityType },
+): Promise<AlertData[]> => {
+  const response = await apiClient.get<AlertData[]>('/api/v1/alerts', {
+    params: { skip: (page - 1) * limit, limit, min_score: minScore, entity_type: entityType },
   });
   return response.data;
 };

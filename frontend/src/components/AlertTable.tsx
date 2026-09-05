@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { AlertData, clearAlerts } from '../services/api/alerts';
 import { 
@@ -11,7 +12,8 @@ import {
   Network, 
   AlertTriangle,
   Layers,
-  Activity
+  Activity,
+  GitFork
 } from 'lucide-react';
 import { Sheet } from './ui/Sheet';
 
@@ -23,6 +25,7 @@ interface AlertTableProps {
 type FilterTab = 'all' | 'wallet' | 'ip' | 'critical';
 
 export const AlertTable: React.FC<AlertTableProps> = ({ alerts, onSelectAlert }) => {
+  const navigate = useNavigate();
   const [selectedEntity, setSelectedEntity] = useState<AlertData | null>(null);
   const [isClearing, setIsClearing] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -387,16 +390,30 @@ export const AlertTable: React.FC<AlertTableProps> = ({ alerts, onSelectAlert })
                         </p>
                       </td>
 
-                      {/* Inspect Entity Action */}
+                      {/* Actions */}
                       <td className="px-6 py-4 text-right whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); handleRowClick(alert); }}
-                          className="inline-flex items-center gap-1 text-xs font-semibold text-cyan-400 hover:text-cyan-300 group-hover:translate-x-0.5 transition-all cursor-pointer"
-                        >
-                          Inspect
-                          <ChevronRight className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/graph?entity_id=${encodeURIComponent(alert.entity_id)}`);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono font-medium bg-amber-950/50 text-amber-400 hover:text-amber-300 hover:bg-amber-900/60 border border-amber-800/50 transition-all cursor-pointer shadow-sm"
+                            title="Explore entity neighborhood in topology graph"
+                          >
+                            <GitFork className="w-3.5 h-3.5" />
+                            Explore Graph
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); handleRowClick(alert); }}
+                            className="inline-flex items-center gap-1 text-xs font-semibold text-cyan-400 hover:text-cyan-300 group-hover:translate-x-0.5 transition-all cursor-pointer px-1.5 py-1"
+                          >
+                            Inspect
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -518,6 +535,16 @@ export const AlertTable: React.FC<AlertTableProps> = ({ alerts, onSelectAlert })
 
             {/* Bottom Actions */}
             <div className="pt-2 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  navigate(`/graph?entity_id=${encodeURIComponent(selectedEntity.entity_id)}`);
+                }}
+                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black text-xs font-mono font-bold flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
+              >
+                <GitFork className="w-4 h-4" />
+                Explore Graph
+              </button>
               <button
                 type="button"
                 onClick={() => setSelectedEntity(null)}

@@ -1,14 +1,17 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { AlertTable } from '../components/AlertTable';
 import { FileUpload } from '../components/FileUpload';
 import { StatsSummary } from '../components/StatsSummary';
+import { RiskDistributionChart } from '../components/RiskDistributionChart';
 import { useAlerts } from '../hooks/useAlerts';
 import { fetchDashboardStats, DashboardStats } from '../services/api/alerts';
 import { Skeleton } from '../components/ui/Skeleton';
 import { ShieldAlert, Radio, Cpu } from 'lucide-react';
 
 export const DashboardPage: React.FC = () => {
+  const location = useLocation();
   const { data: alerts, isLoading: alertsLoading, isError: alertsError } = useAlerts();
 
   const { data: stats } = useQuery<DashboardStats>({
@@ -16,6 +19,20 @@ export const DashboardPage: React.FC = () => {
     queryFn: fetchDashboardStats,
     refetchInterval: 6000,
   });
+
+  useEffect(() => {
+    if (location.hash === '#alerts-section' || location.hash === '#alerts') {
+      const el = document.getElementById('alerts-section');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        const timer = setTimeout(() => {
+          document.getElementById('alerts-section')?.scrollIntoView({ behavior: 'smooth' });
+        }, 200);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [location.hash]);
 
   return (
     <div className="min-h-screen flex flex-col bg-[#07090e] text-slate-100 selection:bg-cyan-500 selection:text-black">
@@ -56,9 +73,14 @@ export const DashboardPage: React.FC = () => {
           </div>
         </section>
 
-        {/* Top Metric KPI Row */}
-        <section>
+        {/* Top Metric KPI Row & Risk Distribution */}
+        <section className="space-y-6">
           <StatsSummary stats={stats ?? null} />
+          {stats?.risk_score_distribution && (
+            <div className="w-full">
+              <RiskDistributionChart distribution={stats.risk_score_distribution} />
+            </div>
+          )}
         </section>
 
         {/* Telemetry Ingestion Zone */}

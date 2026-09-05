@@ -9,28 +9,37 @@ from typing import List, Dict, Any
 
 import pandas as pd
 
+def get_count(val):
+    """
+    Safely counts address entries whether stored as a Python list,
+    comma-separated string, or scalar.
+    """
+    if isinstance(val, list):
+        return len(val)
+    if isinstance(val, str):
+        return len([x for x in val.split(',') if x.strip()])
+    if pd.isna(val) or val is None:
+        return 0
+    return 1
+
+
 def add_heuristic_columns(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Strong Tier M4 -> M3 Contract: 
-    Replaces slow iterrows() with vectorized operations to handle 50k+ rows.
-    Adds boolean heuristic flags as direct columns for the ML model.
+    Evaluates transactional graph heuristics (peel-chain, mixer).
+    Safely handles both list and string address formats.
     """
-    # 1. Clean the address columns (handle NaN values)
-    inputs = df['input_addresses'].fillna('')
-    outputs = df['output_addresses'].fillna('')
+    if 'input_addresses' not in df.columns or 'output_addresses' not in df.columns:
+        df['is_peel_chain'] = False
+        df['is_mixer'] = False
+        return df
 
-    # 2. Vectorized Counting: number of addresses = commas + 1 
-    # (If the string is empty, the count is 0)
-    in_count = inputs.str.count(',') + 1
-    in_count = in_count.where(inputs != '', 0)
-    
-    out_count = outputs.str.count(',') + 1
-    out_count = out_count.where(outputs != '', 0)
+    in_count = df['input_addresses'].apply(get_count)
+    out_count = df['output_addresses'].apply(get_count)
 
-    # 3. Vectorized Peel Chain Detection (1 Input, 2 Outputs)
+    # Peel Chain Detection: 1 Input, 2 Outputs (payment + change)
     df['is_peel_chain'] = (in_count == 1) & (out_count == 2)
 
-    # 4. Vectorized Mixer Detection (e.g., >= 3 Inputs, >= 3 Outputs)
+    # Mixer Detection: >= 3 Inputs, >= 3 Outputs (CoinJoin consolidation)
     df['is_mixer'] = (in_count >= 3) & (out_count >= 3)
 
     return df
@@ -46,9 +55,11 @@ def extract_ml_features(df: pd.DataFrame) -> pd.DataFrame:
     # Clean and explode the input addresses so each wallet gets its own row mapping to an IP
     # This simulates traversing the Graph path: Wallet -> Transaction -> IP
     temp_df = df[['src_ip', 'input_addresses']].dropna().copy()
-    temp_df['wallet'] = temp_df['input_addresses'].astype(str).str.split(',')
+    temp_df['wallet'] = temp_df['input_addresses'].apply(
+        lambda val: val if isinstance(val, list) else [x.strip() for x in str(val).split(',') if x.strip()]
+    )
     exploded_df = temp_df.explode('wallet')
-    exploded_df['wallet'] = exploded_df['wallet'].str.strip()
+    exploded_df['wallet'] = exploded_df['wallet'].astype(str).str.strip()
     exploded_df = exploded_df[exploded_df['wallet'] != ""]
 
     # Metric 1: unique_ips_used (Wallet Feature)

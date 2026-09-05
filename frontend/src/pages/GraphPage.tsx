@@ -6,7 +6,7 @@ import { GitFork, Filter } from 'lucide-react';
 
 export const GraphPage: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const searchEntity = searchParams.get('search') || undefined;
+  const entityId = searchParams.get('entity_id') || searchParams.get('search') || undefined;
 
   const [graphData, setGraphData] = useState<CytoscapeGraphResponse | null>(null);
   const [depth, setDepth] = useState(2);
@@ -16,7 +16,7 @@ export const GraphPage: React.FC = () => {
     const loadGraph = async () => {
       setLoading(true);
       try {
-        const data = await fetchNetworkGraph(searchEntity, depth);
+        const data = await fetchNetworkGraph(entityId, depth);
         setGraphData(data);
       } catch (err) {
         console.error('Failed to load graph data:', err);
@@ -25,7 +25,7 @@ export const GraphPage: React.FC = () => {
       }
     };
     loadGraph();
-  }, [searchEntity, depth]);
+  }, [entityId, depth]);
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
@@ -37,9 +37,9 @@ export const GraphPage: React.FC = () => {
           </h1>
           <p className="text-sm text-gray-400 mt-1">
             Visualizing P2P node connections and transaction peel-chain relationships.
-            {searchEntity && (
+            {entityId && (
               <span className="text-amber-400 font-mono ml-2">
-                Focused on: {searchEntity}
+                Focused on: {entityId}
               </span>
             )}
           </p>

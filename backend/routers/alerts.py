@@ -1,3 +1,4 @@
+import json
 import re
 from typing import List
 from fastapi import APIRouter, Depends, Query
@@ -42,13 +43,22 @@ def get_alerts(
         if not clean_reason:
             clean_reason = "Anomalous Bitcoin network pattern detected"
 
+        shap_exp = a.shap_explanation
+        if isinstance(shap_exp, str):
+            try:
+                shap_exp = json.loads(shap_exp)
+            except Exception:
+                shap_exp = {}
+        elif not isinstance(shap_exp, dict):
+            shap_exp = {}
+
         unique_alerts.append({
             "entity_type": a.entity_type,
             "entity_id": clean_id,
             "risk_score": round(float(a.risk_score), 1) if a.risk_score is not None else 0.0,
             "confidence": round(float(a.confidence), 2) if a.confidence is not None else 0.0,
             "reason": clean_reason,
-            "shap_explanation": {"risk_attribution": 0.5}
+            "shap_explanation": shap_exp
         })
         if len(unique_alerts) >= skip + limit:
             break
