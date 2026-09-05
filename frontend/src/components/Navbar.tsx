@@ -6,7 +6,6 @@ import {
   Activity, 
   BookOpen, 
   X, 
-  Radio, 
   CheckCircle2, 
   Search, 
   Loader2, 
@@ -19,7 +18,6 @@ import { apiClient, globalSearch, SearchResultItem } from '../services/api';
 export const Navbar: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [networkMode, setNetworkMode] = useState<'live' | 'replay'>('live');
   const [showDocs, setShowDocs] = useState(false);
 
   // Search state
@@ -120,10 +118,7 @@ export const Navbar: React.FC = () => {
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5">
                 <span className="text-white font-mono font-bold text-[15px] tracking-wider">
-                  BTM <span className="text-cyan-400">//</span> SENTINEL
-                </span>
-                <span className="hidden xl:inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-cyan-950/80 text-cyan-400 border border-cyan-800/50">
-                  v2.4
+                  Flashmen
                 </span>
               </div>
             </div>
@@ -171,31 +166,6 @@ export const Navbar: React.FC = () => {
           >
             Graph Explorer
           </Link>
-
-          <Link
-            to="/upload"
-            className={`px-3 py-1.5 rounded-lg transition-all ${
-              isActive('/upload')
-                ? 'bg-zinc-800 text-white shadow-sm border border-zinc-700/60'
-                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40'
-            }`}
-          >
-            Ingestion Pipeline
-          </Link>
-
-          <button
-            type="button"
-            onClick={() => {
-              if (location.pathname === '/') {
-                document.getElementById('alerts-section')?.scrollIntoView({ behavior: 'smooth' });
-              } else {
-                navigate('/#alerts-section');
-              }
-            }}
-            className="px-3 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40 transition-all cursor-pointer"
-          >
-            Alert Center
-          </button>
         </nav>
 
         {/* Right Section: Global Search Bar + Mode Toggle + Docs */}
@@ -295,34 +265,6 @@ export const Navbar: React.FC = () => {
                 )}
               </div>
             )}
-          </div>
-
-          {/* Live / Replay Network Mode Toggle */}
-          <div className="hidden sm:flex items-center bg-zinc-900/80 p-1 rounded-lg border border-zinc-800/80 text-[12px] font-mono">
-            <button
-              type="button"
-              onClick={() => setNetworkMode('live')}
-              className={`px-2.5 py-1 rounded flex items-center gap-1.5 transition-all ${
-                networkMode === 'live'
-                  ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 font-semibold shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200'
-              }`}
-            >
-              <Radio className={`w-3 h-3 ${networkMode === 'live' ? 'text-emerald-400 animate-pulse' : ''}`} />
-              Live
-            </button>
-            <button
-              type="button"
-              onClick={() => setNetworkMode('replay')}
-              className={`px-2.5 py-1 rounded flex items-center gap-1.5 transition-all ${
-                networkMode === 'replay'
-                  ? 'bg-cyan-950/80 text-cyan-400 border border-cyan-800/60 font-semibold shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200'
-              }`}
-            >
-              <Activity className="w-3 h-3 text-cyan-400" />
-              Replay
-            </button>
           </div>
 
           {/* Documentation Trigger Button */}
